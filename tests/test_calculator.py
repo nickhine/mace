@@ -6,14 +6,17 @@ from pathlib import Path
 import ase.io
 import numpy as np
 import pytest
+from ase import build
 from ase.atoms import Atoms
 from ase.calculators.test import gradient_test
 from ase.constraints import ExpCellFilter
 
+from mace.calculators import mace_mp, mace_off
 from mace.calculators.mace import MACECalculator
+from mace.modules.models import ScaleShiftMACE
 
 pytest_mace_dir = Path(__file__).parent.parent
-run_train = Path(__file__).parent.parent / "scripts" / "run_train.py"
+run_train = Path(__file__).parent.parent / "mace" / "cli" / "run_train.py"
 
 
 @pytest.fixture(scope="module", name="fitting_configs")
@@ -84,8 +87,72 @@ def trained_model_fixture(tmp_path_factory, fitting_configs):
     mace_params["train_file"] = tmp_path / "fit.xyz"
 
     # make sure run_train.py is using the mace that is currently being tested
-    run_env = os.environ
-    run_env["PYTHONPATH"] = str(pytest_mace_dir) + ":" + os.environ["PYTHONPATH"]
+    run_env = os.environ.copy()
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    run_env["PYTHONPATH"] = ":".join(sys.path)
+    print("DEBUG subprocess PYTHONPATH", run_env["PYTHONPATH"])
+
+    cmd = (
+        sys.executable
+        + " "
+        + str(run_train)
+        + " "
+        + " ".join(
+            [
+                (f"--{k}={v}" if v is not None else f"--{k}")
+                for k, v in mace_params.items()
+            ]
+        )
+    )
+
+    p = subprocess.run(cmd.split(), env=run_env, check=True)
+
+    assert p.returncode == 0
+
+    return MACECalculator(tmp_path / "MACE.model", device="cpu")
+
+
+@pytest.fixture(scope="module", name="trained_equivariant_model")
+def trained_model_equivariant_fixture(tmp_path_factory, fitting_configs):
+    _mace_params = {
+        "name": "MACE",
+        "valid_fraction": 0.05,
+        "energy_weight": 1.0,
+        "forces_weight": 10.0,
+        "stress_weight": 1.0,
+        "model": "MACE",
+        "hidden_irreps": "16x0e+16x1o",
+        "r_max": 3.5,
+        "batch_size": 5,
+        "max_num_epochs": 10,
+        "swa": None,
+        "start_swa": 5,
+        "ema": None,
+        "ema_decay": 0.99,
+        "amsgrad": None,
+        "restart_latest": None,
+        "device": "cpu",
+        "seed": 5,
+        "loss": "stress",
+        "energy_key": "REF_energy",
+        "forces_key": "REF_forces",
+        "stress_key": "REF_stress",
+    }
+
+    tmp_path = tmp_path_factory.mktemp("run_")
+
+    ase.io.write(tmp_path / "fit.xyz", fitting_configs)
+
+    mace_params = _mace_params.copy()
+    mace_params["checkpoints_dir"] = str(tmp_path)
+    mace_params["model_dir"] = str(tmp_path)
+    mace_params["train_file"] = tmp_path / "fit.xyz"
+
+    # make sure run_train.py is using the mace that is currently being tested
+    run_env = os.environ.copy()
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    run_env["PYTHONPATH"] = ":".join(sys.path)
+    print("DEBUG subprocess PYTHONPATH", run_env["PYTHONPATH"])
 
     cmd = (
         sys.executable
@@ -145,8 +212,10 @@ def trained_dipole_fixture(tmp_path_factory, fitting_configs):
     mace_params["train_file"] = tmp_path / "fit.xyz"
 
     # make sure run_train.py is using the mace that is currently being tested
-    run_env = os.environ
-    run_env["PYTHONPATH"] = str(pytest_mace_dir) + ":" + os.environ["PYTHONPATH"]
+    run_env = os.environ.copy()
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    run_env["PYTHONPATH"] = ":".join(sys.path)
+    print("DEBUG subprocess PYTHONPATH", run_env["PYTHONPATH"])
 
     cmd = (
         sys.executable
@@ -208,8 +277,10 @@ def trained_energy_dipole_fixture(tmp_path_factory, fitting_configs):
     mace_params["train_file"] = tmp_path / "fit.xyz"
 
     # make sure run_train.py is using the mace that is currently being tested
-    run_env = os.environ
-    run_env["PYTHONPATH"] = str(pytest_mace_dir) + ":" + os.environ["PYTHONPATH"]
+    run_env = os.environ.copy()
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    run_env["PYTHONPATH"] = ":".join(sys.path)
+    print("DEBUG subprocess PYTHONPATH", run_env["PYTHONPATH"])
 
     cmd = (
         sys.executable
@@ -273,8 +344,10 @@ def trained_committee_fixture(tmp_path_factory, fitting_configs):
         mace_params["train_file"] = tmp_path / "fit.xyz"
 
         # make sure run_train.py is using the mace that is currently being tested
-        run_env = os.environ
-        run_env["PYTHONPATH"] = str(pytest_mace_dir) + ":" + os.environ["PYTHONPATH"]
+        run_env = os.environ.copy()
+        sys.path.insert(0, str(Path(__file__).parent.parent))
+        run_env["PYTHONPATH"] = ":".join(sys.path)
+        print("DEBUG subprocess PYTHONPATH", run_env["PYTHONPATH"])
 
         cmd = (
             sys.executable
@@ -331,8 +404,10 @@ def test_calculator_committee(fitting_configs, trained_committee):
     E = at.get_potential_energy()
     energies = at.calc.results["energies"]
     energies_var = at.calc.results["energy_var"]
+    forces_var = np.var(at.calc.results["forces_comm"], axis=0)
     assert np.allclose(E, np.mean(energies))
     assert np.allclose(energies_var, np.var(energies))
+    assert forces_var.shape == at.calc.results["forces"].shape
 
 
 def test_calculator_dipole(fitting_configs, trained_dipole_model):
@@ -353,3 +428,45 @@ def test_calculator_energy_dipole(fitting_configs, trained_energy_dipole_model):
 
     assert np.allclose(grads[0], grads[1])
     assert len(dip) == 3
+
+
+def test_calculator_descriptor(fitting_configs, trained_equivariant_model):
+    at = fitting_configs[2].copy()
+    at.calc = trained_equivariant_model
+
+    desc_invariant = at.calc.get_descriptors(at, invariants_only=True)
+    desc_single_layer = at.calc.get_descriptors(at, invariants_only=True, num_layers=1)
+    desc = at.calc.get_descriptors(at, invariants_only=False)
+
+    assert desc_invariant.shape[0] == 3
+    assert desc_invariant.shape[1] == 32
+    assert desc_single_layer.shape[0] == 3
+    assert desc_single_layer.shape[1] == 16
+    assert desc.shape[0] == 3
+    assert desc.shape[1] == 80
+
+
+def test_mace_mp(capsys: pytest.CaptureFixture):
+    mp_mace = mace_mp()
+    assert isinstance(mp_mace, MACECalculator)
+    assert mp_mace.model_type == "MACE"
+    assert len(mp_mace.models) == 1
+    assert isinstance(mp_mace.models[0], ScaleShiftMACE)
+
+    _, stderr = capsys.readouterr()
+    assert stderr == ""
+
+
+def test_mace_off():
+    mace_off_model = mace_off(model="small", device="cpu")
+    assert isinstance(mace_off_model, MACECalculator)
+    assert mace_off_model.model_type == "MACE"
+    assert len(mace_off_model.models) == 1
+    assert isinstance(mace_off_model.models[0], ScaleShiftMACE)
+
+    atoms = build.molecule("H2O")
+    atoms.calc = mace_off_model
+
+    E = atoms.get_potential_energy()
+
+    assert np.allclose(E, -2081.116128586803, atol=1e-9)

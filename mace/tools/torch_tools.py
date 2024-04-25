@@ -5,6 +5,7 @@
 ###########################################################################################
 
 import logging
+from contextlib import contextmanager
 from typing import Dict
 
 import numpy as np
@@ -49,13 +50,16 @@ def to_numpy(t: torch.Tensor) -> np.ndarray:
 
 
 def init_device(device_str: str) -> torch.device:
-    if device_str == "cuda":
+    if "cuda" in device_str:
         assert torch.cuda.is_available(), "No CUDA device available!"
+        if ":" in device_str:
+            # Check if the desired device is available
+            assert int(device_str.split(":")[-1]) < torch.cuda.device_count()
         logging.info(
             f"CUDA version: {torch.version.cuda}, CUDA device: {torch.cuda.current_device()}"
         )
         torch.cuda.init()
-        return torch.device("cuda")
+        return torch.device(device_str)
     if device_str == "mps":
         assert torch.backends.mps.is_available(), "No MPS backend is available!"
         logging.info("Using MPS GPU acceleration")
@@ -83,7 +87,7 @@ def get_complex_default_dtype():
     raise NotImplementedError
 
 
-def spherical_to_cartesian(t: torch.Tensor, device: torch.device):
+def spherical_to_cartesian(t: torch.Tensor):
     """
     Convert spherical notation to cartesian notation
     """
@@ -104,7 +108,7 @@ def cartesian_to_spherical(t: torch.Tensor, device: torch.device):
 def voigt_to_matrix(t: torch.Tensor):
     """
     Convert voigt notation to matrix notation
-    :param t: (6,) tensor or (3, 3) tensor
+    :param t: (6,) tensor or (3, 3) tensor or (9,) tensor
     :return: (3, 3) tensor
     """
     if t.shape == (3, 3):
@@ -118,9 +122,11 @@ def voigt_to_matrix(t: torch.Tensor):
             ],
             dtype=t.dtype,
         )
+    if t.shape == (9,):
+        return t.view(3, 3)
 
     raise ValueError(
-        f"Stress tensor must be of shape (6,) or (3, 3), but has shape {t.shape}"
+        f"Stress tensor must be of shape (6,) or (3, 3), or (9,) but has shape {t.shape}"
     )
 
 
@@ -128,3 +134,16 @@ def init_wandb(project: str, entity: str, name: str, config: dict):
     import wandb
 
     wandb.init(project=project, entity=entity, name=name, config=config)
+
+
+@contextmanager
+def default_dtype(dtype: torch.dtype):
+    """Context manager for configuring the default_dtype used by torch
+
+    Args:
+        dtype (torch.dtype): the default dtype to use within this context manager
+    """
+    init = torch.get_default_dtype()
+    torch.set_default_dtype(dtype)
+    yield
+    torch.set_default_dtype(init)

@@ -14,6 +14,7 @@ from .blocks import (
     NonLinearDipoleReadoutBlock,
     NonLinearReadoutBlock,
     RadialEmbeddingBlock,
+    RealAgnosticAttResidualInteractionBlock,
     RealAgnosticInteractionBlock,
     RealAgnosticResidualInteractionBlock,
     ResidualElementDependentInteractionBlock,
@@ -21,12 +22,13 @@ from .blocks import (
 )
 from .loss import (
     DipoleSingleLoss,
-    EnergyForcesLoss,
+    UniversalLoss,
     WeightedEnergyForcesDipoleLoss,
     WeightedEnergyForcesLoss,
     WeightedEnergyForcesStressLoss,
     WeightedEnergyForcesVirialsLoss,
     WeightedForcesLoss,
+    WeightedHuberEnergyForcesStressLoss,
 )
 from .models import (
     MACE,
@@ -36,7 +38,7 @@ from .models import (
     ScaleShiftBOTNet,
     ScaleShiftMACE,
 )
-from .radial import BesselBasis, PolynomialCutoff
+from .radial import BesselBasis, GaussianBasis, PolynomialCutoff, ZBLBasis
 from .symmetric_contraction import SymmetricContraction
 from .utils import (
     compute_avg_num_neighbors,
@@ -45,6 +47,7 @@ from .utils import (
     compute_mean_rms_energy_forces,
     compute_mean_std_atomic_inter_energy,
     compute_rms_dipoles,
+    compute_statistics,
 )
 
 interaction_classes: Dict[str, Type[InteractionBlock]] = {
@@ -52,6 +55,7 @@ interaction_classes: Dict[str, Type[InteractionBlock]] = {
     "ResidualElementDependentInteractionBlock": ResidualElementDependentInteractionBlock,
     "AgnosticResidualNonlinearInteractionBlock": AgnosticResidualNonlinearInteractionBlock,
     "RealAgnosticResidualInteractionBlock": RealAgnosticResidualInteractionBlock,
+    "RealAgnosticAttResidualInteractionBlock": RealAgnosticAttResidualInteractionBlock,
     "RealAgnosticInteractionBlock": RealAgnosticInteractionBlock,
 }
 
@@ -71,6 +75,7 @@ gate_dict: Dict[str, Optional[Callable]] = {
 __all__ = [
     "AtomicEnergiesBlock",
     "RadialEmbeddingBlock",
+    "ZBLBasis",
     "LinearNodeEmbeddingBlock",
     "LinearReadoutBlock",
     "EquivariantProductBasisBlock",
@@ -81,23 +86,26 @@ __all__ = [
     "NonLinearReadoutBlock",
     "PolynomialCutoff",
     "BesselBasis",
+    "GaussianBasis",
     "MACE",
     "ScaleShiftMACE",
     "BOTNet",
     "ScaleShiftBOTNet",
     "AtomicDipolesMACE",
     "EnergyDipolesMACE",
-    "EnergyForcesLoss",
     "WeightedEnergyForcesLoss",
     "WeightedForcesLoss",
     "WeightedEnergyForcesVirialsLoss",
     "WeightedEnergyForcesStressLoss",
     "DipoleSingleLoss",
     "WeightedEnergyForcesDipoleLoss",
+    "WeightedHuberEnergyForcesStressLoss",
+    "UniversalLoss",
     "SymmetricContraction",
     "interaction_classes",
     "compute_mean_std_atomic_inter_energy",
     "compute_avg_num_neighbors",
+    "compute_statistics",
     "compute_fixed_charge_dipole",
     "compute_dielectric_gradients",
 ]
