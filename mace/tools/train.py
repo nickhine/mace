@@ -91,8 +91,9 @@ def valid_err_log(valid_loss, eval_metrics, logger, log_errors, epoch=None):
         )
     elif log_errors == "DipoleRMSE":
         error_mu = eval_metrics["rmse_mu_per_atom"] * 1e3
+        error_alpha = eval_metrics["rmse_alpha_per_atom"] * 1e3
         logging.info(
-            f"Epoch {epoch}: loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye, RMSE_ALPHA_per_atom={eval_metrics['rmse_alpha_per_atom']:.2f}"
+            f"Epoch {epoch}: loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye, RMSE_ALPHA_per_atom={error_alpha:.2f}"
         )
     elif log_errors == "EnergyDipoleRMSE":
         error_e = eval_metrics["rmse_e_per_atom"] * 1e3
@@ -442,15 +443,15 @@ class MACELoss(Metric):
                 / (batch.ptr[1:] - batch.ptr[:-1]).unsqueeze(-1)
             )
         if output.get("polarizability") is not None and batch.polarizability is not None:
-            self.Alphas_computed = True
+            self.Alphas_computed += 1.0
+            self.alphas.append(batch.polarizability)
             self.delta_alphas.append(
                 batch.polarizability.view(-1, 3, 3) - output["polarizability"]
             )
-            delta_alphas_per_atom.append(
+            self.delta_alphas_per_atom.append(
                 (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
                 / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
             )
-            self.alphas.append(batch.polarizability)
 
     def convert(self, delta: Union[torch.Tensor, List[torch.Tensor]]) -> np.ndarray:
         if isinstance(delta, list):

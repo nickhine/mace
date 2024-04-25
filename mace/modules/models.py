@@ -836,7 +836,7 @@ class AtomicDipolesMACE(torch.nn.Module):
         )  # [n_graphs,6]
 
         total_polarizability = spherical_to_cartesian(
-            total_polarizability_spherical, device=data["positions"].device
+            total_polarizability_spherical
         )
         # TODO
         # return atomic polarizability, atomic dipole

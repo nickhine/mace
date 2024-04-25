@@ -94,6 +94,7 @@ def get_dataset_from_xyz(
             energy_key=energy_key,
             forces_key=forces_key,
             dipole_key=dipole_key,
+            stress_key=stress_key,
             charges_key=charges_key,
             polarizability_key=polarizability_key,
             extract_atomic_energies=False,

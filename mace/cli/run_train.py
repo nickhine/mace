@@ -173,7 +173,8 @@ def main() -> None:
     # yapf: enable
     logging.info(z_table)
 
-    if atomic_energies_dict is None or len(atomic_energies_dict) == 0:
+    if (atomic_energies_dict is None or len(atomic_energies_dict) == 0 
+        and args.model!="AtomicDipolesMACE"):
         if args.E0s.lower() == "foundation":
             assert args.foundation_model is not None
             logging.info("Using atomic energies from foundation model")
