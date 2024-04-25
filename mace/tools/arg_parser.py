@@ -104,16 +104,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         ],
     )
     parser.add_argument(
-        "--r_max", help="distance cutoff (in Ang)", 
-        type=float, 
-        default=5.0
-    )
-    parser.add_argument(
-        "--radial_type",
-        help="type of radial basis functions",
-        type=str,
-        default="bessel",
-        choices=["bessel", "gaussian", "chebyshev"],
+        "--r_max", help="distance cutoff (in Ang)", type=float, default=5.0
     )
     parser.add_argument(
         "--radial_type",
@@ -400,13 +391,13 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         ],
     )
     parser.add_argument(
-        "--forces_weight", help="weight of forces loss", type=float, default=10.0
+        "--forces_weight", help="weight of forces loss", type=float, default=100.0
     )
     parser.add_argument(
         "--swa_forces_weight",
         help="weight of forces loss after starting swa",
         type=float,
-        default=1.0,
+        default=100.0,
     )
     parser.add_argument(
         "--energy_weight", help="weight of energy loss", type=float, default=1.0

@@ -345,28 +345,11 @@ def evaluate(
     output_args: Dict[str, bool],
     device: torch.device,
 ) -> Tuple[float, Dict[str, Any]]:
-    total_loss = 0.0
-    E_computed = False
-    delta_es_list = []
-    delta_es_per_atom_list = []
-    delta_fs_list = []
-    Fs_computed = False
-    fs_list = []
-    stress_computed = False
-    delta_stress_list = []
-    delta_stress_per_atom_list = []
-    virials_computed = False
-    delta_virials_list = []
-    delta_virials_per_atom_list = []
-    Mus_computed = False
-    delta_mus_list = []
-    delta_mus_per_atom_list = []
-    mus_list = []
-    delta_alphas_list = []
-    alphas_list = []
-    delta_alphas_per_atom_list = []
-    Alphas_computed = False
-    batch = None  # for pylint
+    for param in model.parameters():
+        param.requires_grad = False
+
+    metrics = MACELoss(loss_fn=loss_fn).to(device)
+
 
     start_time = time.time()
     for batch in data_loader:
@@ -417,6 +400,10 @@ class MACELoss(Metric):
         self.add_state("mus", default=[], dist_reduce_fx="cat")
         self.add_state("delta_mus", default=[], dist_reduce_fx="cat")
         self.add_state("delta_mus_per_atom", default=[], dist_reduce_fx="cat")
+        self.add_state("Alphas_computed", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("alphas", default=[], dist_reduce_fx="cat")
+        self.add_state("delta_alphas", default=[], dist_reduce_fx="cat")
+        self.add_state("delta_alphas_per_atom", default=[], dist_reduce_fx="cat")
 
     def update(self, batch, output):  # pylint: disable=arguments-differ
         loss = self.loss_fn(pred=output, ref=batch)
@@ -455,78 +442,76 @@ class MACELoss(Metric):
                 (batch.dipole - output["dipole"])
                 / (batch.ptr[1:] - batch.ptr[:-1]).unsqueeze(-1)
             )
-            mus_list.append(batch.dipole)
-            if (
-            output.get("polarizability") is not None
-            and batch.polarizability is not None
-        ):
-            Alphas_computed = True
-            delta_alphas_list.append(
+        if output.get("polarizability") is not None and batch.polarizability is not None:
+            self.Alphas_computed = True
+            self.delta_alphas_list.append(
                 batch.polarizability.view(-1, 3, 3) - output["polarizability"]
             )
             delta_alphas_per_atom_list.append(
                 (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
                 / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
             )
-            alphas_list.append(batch.polarizability)
+            self.alphas_list.append(batch.polarizability)
 
-    avg_loss = total_loss / len(data_loader)
+    def convert(self, delta: Union[torch.Tensor, List[torch.Tensor]]) -> np.ndarray:
+        if isinstance(delta, list):
+            delta = torch.cat(delta)
+        return to_numpy(delta)
 
-    aux = {
-        "loss": avg_loss,
-    }
-
-    if E_computed:
-        delta_es = to_numpy(torch.cat(delta_es_list, dim=0))
-        delta_es_per_atom = to_numpy(torch.cat(delta_es_per_atom_list, dim=0))
-        aux["mae_e"] = compute_mae(delta_es)
-        aux["mae_e_per_atom"] = compute_mae(delta_es_per_atom)
-        aux["rmse_e"] = compute_rmse(delta_es)
-        aux["rmse_e_per_atom"] = compute_rmse(delta_es_per_atom)
-        aux["q95_e"] = compute_q95(delta_es)
-    if Fs_computed:
-        delta_fs = to_numpy(torch.cat(delta_fs_list, dim=0))
-        fs = to_numpy(torch.cat(fs_list, dim=0))
-        aux["mae_f"] = compute_mae(delta_fs)
-        aux["rel_mae_f"] = compute_rel_mae(delta_fs, fs)
-        aux["rmse_f"] = compute_rmse(delta_fs)
-        aux["rel_rmse_f"] = compute_rel_rmse(delta_fs, fs)
-        aux["q95_f"] = compute_q95(delta_fs)
-    if stress_computed:
-        delta_stress = to_numpy(torch.cat(delta_stress_list, dim=0))
-        delta_stress_per_atom = to_numpy(torch.cat(delta_stress_per_atom_list, dim=0))
-        aux["mae_stress"] = compute_mae(delta_stress)
-        aux["rmse_stress"] = compute_rmse(delta_stress)
-        aux["rmse_stress_per_atom"] = compute_rmse(delta_stress_per_atom)
-        aux["q95_stress"] = compute_q95(delta_stress)
-    if virials_computed:
-        delta_virials = to_numpy(torch.cat(delta_virials_list, dim=0))
-        delta_virials_per_atom = to_numpy(torch.cat(delta_virials_per_atom_list, dim=0))
-        aux["mae_virials"] = compute_mae(delta_virials)
-        aux["rmse_virials"] = compute_rmse(delta_virials)
-        aux["rmse_virials_per_atom"] = compute_rmse(delta_virials_per_atom)
-        aux["q95_virials"] = compute_q95(delta_virials)
-    if Mus_computed:
-        delta_mus = to_numpy(torch.cat(delta_mus_list, dim=0))
-        delta_mus_per_atom = to_numpy(torch.cat(delta_mus_per_atom_list, dim=0))
-        mus = to_numpy(torch.cat(mus_list, dim=0))
-        aux["mae_mu"] = compute_mae(delta_mus)
-        aux["mae_mu_per_atom"] = compute_mae(delta_mus_per_atom)
-        aux["rel_mae_mu"] = compute_rel_mae(delta_mus, mus)
-        aux["rmse_mu"] = compute_rmse(delta_mus)
-        aux["rmse_mu_per_atom"] = compute_rmse(delta_mus_per_atom)
-        aux["rel_rmse_mu"] = compute_rel_rmse(delta_mus, mus)
-        aux["q95_mu"] = compute_q95(delta_mus)
-    if Alphas_computed:
-        delta_alphas = to_numpy(torch.cat(delta_alphas_list, dim=0))
-        delta_alphas_per_atom = to_numpy(torch.cat(delta_alphas_per_atom_list, dim=0))
-        alphas = to_numpy(torch.cat(alphas_list, dim=0))
-        aux["mae_alpha"] = compute_mae(delta_alphas)
-        aux["mae_alpha_per_atom"] = compute_mae(delta_alphas_per_atom)
-        aux["rel_mae_alpha"] = compute_rel_mae(delta_alphas, alphas)
-        aux["rmse_alpha"] = compute_rmse(delta_alphas)
-        aux["rmse_alpha_per_atom"] = compute_rmse(delta_alphas_per_atom)
-        aux["rel_rmse_alpha"] = compute_rel_rmse(delta_alphas, alphas)
-        aux["q95_alpha"] = compute_q95(delta_alphas)
+    def compute(self):
+        aux = {}
+        aux["loss"] = to_numpy(self.total_loss / self.num_data).item()
+        if self.E_computed:
+            delta_es = self.convert(self.delta_es)
+            delta_es_per_atom = self.convert(self.delta_es_per_atom)
+            aux["mae_e"] = compute_mae(delta_es)
+            aux["mae_e_per_atom"] = compute_mae(delta_es_per_atom)
+            aux["rmse_e"] = compute_rmse(delta_es)
+            aux["rmse_e_per_atom"] = compute_rmse(delta_es_per_atom)
+            aux["q95_e"] = compute_q95(delta_es)
+        if self.Fs_computed:
+            fs = self.convert(self.fs)
+            delta_fs = self.convert(self.delta_fs)
+            aux["mae_f"] = compute_mae(delta_fs)
+            aux["rel_mae_f"] = compute_rel_mae(delta_fs, fs)
+            aux["rmse_f"] = compute_rmse(delta_fs)
+            aux["rel_rmse_f"] = compute_rel_rmse(delta_fs, fs)
+            aux["q95_f"] = compute_q95(delta_fs)
+        if self.stress_computed:
+            delta_stress = self.convert(self.delta_stress)
+            delta_stress_per_atom = self.convert(self.delta_stress_per_atom)
+            aux["mae_stress"] = compute_mae(delta_stress)
+            aux["rmse_stress"] = compute_rmse(delta_stress)
+            aux["rmse_stress_per_atom"] = compute_rmse(delta_stress_per_atom)
+            aux["q95_stress"] = compute_q95(delta_stress)
+        if self.virials_computed:
+            delta_virials = self.convert(self.delta_virials)
+            delta_virials_per_atom = self.convert(self.delta_virials_per_atom)
+            aux["mae_virials"] = compute_mae(delta_virials)
+            aux["rmse_virials"] = compute_rmse(delta_virials)
+            aux["rmse_virials_per_atom"] = compute_rmse(delta_virials_per_atom)
+            aux["q95_virials"] = compute_q95(delta_virials)
+        if self.Mus_computed:
+            mus = self.convert(self.mus)
+            delta_mus = self.convert(self.delta_mus)
+            delta_mus_per_atom = self.convert(self.delta_mus_per_atom)
+            aux["mae_mu"] = compute_mae(delta_mus)
+            aux["mae_mu_per_atom"] = compute_mae(delta_mus_per_atom)
+            aux["rel_mae_mu"] = compute_rel_mae(delta_mus, mus)
+            aux["rmse_mu"] = compute_rmse(delta_mus)
+            aux["rmse_mu_per_atom"] = compute_rmse(delta_mus_per_atom)
+            aux["rel_rmse_mu"] = compute_rel_rmse(delta_mus, mus)
+            aux["q95_mu"] = compute_q95(delta_mus)
+        if self.Alphas_computed:
+            alphas = self.convert(self.alphas)
+            delta_alphas = self.convert(self.delta_alphas)
+            delta_alphas_per_atom = self.convert(self.delta_alphas_per_atom)
+            aux["mae_alpha"] = compute_mae(delta_alphas)
+            aux["mae_alpha_per_atom"] = compute_mae(delta_alphas_per_atom)
+            aux["rel_mae_alpha"] = compute_rel_mae(delta_alphas, alphas)
+            aux["rmse_alpha"] = compute_rmse(delta_alphas)
+            aux["rmse_alpha_per_atom"] = compute_rmse(delta_alphas_per_atom)
+            aux["rel_rmse_alpha"] = compute_rel_rmse(delta_alphas, alphas)
+            aux["q95_alpha"] = compute_q95(delta_alphas)
         
         return aux["loss"], aux
