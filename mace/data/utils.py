@@ -160,7 +160,7 @@ def config_from_atoms(
         virials_weight = 0.0
     if dipole is None:
         dipole = np.zeros(3)
-        # dipole_weight = 0.0
+        # dipoles_weight = 0.0
     if polarizability is None:
         polarizability = np.zeros((3, 3))
         polarizability_weight = 0.0
@@ -341,11 +341,14 @@ def save_dataset_as_HDF5(dataset: List, out_name: str) -> None:
             grp["forces_weight"] = data.forces_weight
             grp["stress_weight"] = data.stress_weight
             grp["virials_weight"] = data.virials_weight
+            grp["dipole_weight"] = data.dipole_weight
+            grp["polarizability_weight"] = data.polarizability_weight
             grp["forces"] = data.forces
             grp["energy"] = data.energy
             grp["stress"] = data.stress
             grp["virials"] = data.virials
             grp["dipole"] = data.dipole
+            grp["polarizability"] = data.polarizability
             grp["charges"] = data.charges
 
 
@@ -398,38 +401,6 @@ def save_configurations_as_HDF5(configurations: Configurations, _, h5_file) -> N
         subgroup["dipole_weight"] = write_value(config.dipole_weight)
         subgroup["polarizability_weight"] = write_value(config.polarizability_weight)
         subgroup["config_type"] = write_value(config.config_type)
-
-
-def write_value(value):
-    return value if value is not None else "None"
-
-
-def save_dataset_as_HDF5(dataset: List, out_name: str) -> None:
-    with h5py.File(out_name, "w") as f:
-        for i, data in enumerate(dataset):
-            grp = f.create_group(f"config_{i}")
-            grp["num_nodes"] = data.num_nodes
-            grp["edge_index"] = data.edge_index
-            grp["positions"] = data.positions
-            grp["shifts"] = data.shifts
-            grp["unit_shifts"] = data.unit_shifts
-            grp["cell"] = data.cell
-            grp["node_attrs"] = data.node_attrs
-            grp["weight"] = data.weight
-            grp["energy_weight"] = data.energy_weight
-            grp["forces_weight"] = data.forces_weight
-            grp["stress_weight"] = data.stress_weight
-            grp["virials_weight"] = data.virials_weight
-            grp["dipole_weight"] = data.dipole_weight
-            grp["polarizability_weight"] = data.polarizability_weight
-            grp["forces"] = data.forces
-            grp["energy"] = data.energy
-            grp["stress"] = data.stress
-            grp["virials"] = data.virials
-            grp["dipole"] = data.dipole
-            grp["polarizability"] = data.polarizability
-            grp["charges"] = data.charges
-
 
 
 def write_value(value):
