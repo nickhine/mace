@@ -191,7 +191,16 @@ class MACECalculator(Calculator):
         if model_type in ["EnergyDipoleMACE", "DipoleMACE"]:
             dipole = torch.zeros(num_models, 3, device=self.device)
             polarizability = torch.zeros(num_models, 3, 3, device=self.device)
-            dict_of_tensors.update({"dipole": dipole,"polarizability": polarizability})
+            dipole_deriv = torch.zeros(num_models, num_atoms, 3, 3, device=self.device)
+            polarizability_deriv = torch.zeros(num_models, num_atoms, 9, 3, device=self.device)
+            dict_of_tensors.update(
+                {
+                    "dipole": dipole,
+                    "polarizability": polarizability,
+                    "dipole_deriv": dipole_deriv,
+                    "polarizability_deriv":polarizability_deriv,
+                }
+            )
         return dict_of_tensors
 
     def _prepare_batch(self, batch):
@@ -214,7 +223,7 @@ class MACECalculator(Calculator):
         Calculator.calculate(self, atoms)
 
         # prepare data
-        config = data.config_from_atoms(atoms, charges_key=self.charges_key, energy_key=self.energy_key)
+        config = data.config_from_atoms(atoms, charges_key=self.charges_key)
         data_loader = torch_geometric.dataloader.DataLoader(
             dataset=[
                 data.AtomicData.from_config(
@@ -253,6 +262,8 @@ class MACECalculator(Calculator):
             if self.model_type in ["DipoleMACE", "EnergyDipoleMACE"]:
                 ret_tensors["dipole"][i] = out["dipole"].detach()
                 ret_tensors["polarizability"][i] = out["polarizability"].detach()
+                ret_tensors["dipole_deriv"][i] = out["dmu_dr"].detach()
+                ret_tensors["polarizability_deriv"][i] = out["dalpha_dr"].detach()
 
         self.results = {}
         if self.model_type in ["MACE", "EnergyDipoleMACE"]:
@@ -304,6 +315,12 @@ class MACECalculator(Calculator):
             )
             self.results["polarizability"] = (
                 torch.mean(ret_tensors["polarizability"], dim=0).cpu().numpy()
+            )
+            self.results["dipole_deriv"] = (
+                torch.mean(ret_tensors["dipole_deriv"], dim=0).cpu().numpy()
+            )
+            self.results["polarizability_deriv"] = (
+                torch.mean(ret_tensors["polarizability_deriv"], dim=0).cpu().numpy()
             )
             if self.num_models > 1:
                 self.results["dipole_var"] = (
