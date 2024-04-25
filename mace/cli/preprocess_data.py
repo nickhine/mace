@@ -135,6 +135,7 @@ def main():
         stress_key=args.stress_key,
         virials_key=args.virials_key,
         dipole_key=args.dipole_key,
+        polarizability_key=args.polarizability_key,
         charges_key=args.charges_key,
     )
 

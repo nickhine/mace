@@ -701,6 +701,12 @@ def build_preprocess_arg_parser() -> argparse.ArgumentParser:
         default="dipole",
     )
     parser.add_argument(
+        "--polarizability_key",
+        help="Key of polarizability in training xyz",
+        type=str,
+        default="polarizability",
+    )
+    parser.add_argument(
         "--charges_key",
         help="Key of atomic charges in training xyz",
         type=str,

@@ -350,7 +350,6 @@ def evaluate(
 
     metrics = MACELoss(loss_fn=loss_fn).to(device)
 
-
     start_time = time.time()
     for batch in data_loader:
         batch = batch.to(device)
@@ -444,14 +443,14 @@ class MACELoss(Metric):
             )
         if output.get("polarizability") is not None and batch.polarizability is not None:
             self.Alphas_computed = True
-            self.delta_alphas_list.append(
+            self.delta_alphas.append(
                 batch.polarizability.view(-1, 3, 3) - output["polarizability"]
             )
-            delta_alphas_per_atom_list.append(
+            delta_alphas_per_atom.append(
                 (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
                 / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
             )
-            self.alphas_list.append(batch.polarizability)
+            self.alphas.append(batch.polarizability)
 
     def convert(self, delta: Union[torch.Tensor, List[torch.Tensor]]) -> np.ndarray:
         if isinstance(delta, list):
