@@ -5,8 +5,6 @@
 ###########################################################################################
 
 import logging
-import h5py
-from multiprocessing import Pool
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -162,7 +160,7 @@ def config_from_atoms(
         virials_weight = 0.0
     if dipole is None:
         dipole = np.zeros(3)
-        dipole_weight = 0.0
+        # dipole_weight = 0.0
     if polarizability is None:
         polarizability = np.zeros((3, 3))
         polarizability_weight = 0.0

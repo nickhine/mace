@@ -43,7 +43,6 @@ def get_dataset_from_xyz(
     dipole_key: str = "dipoles",
     charges_key: str = "charges",
     polarizability_key: str = "polarizability",
-    preprocess_for_evaluation: bool = False,
 ) -> Tuple[SubsetCollection, Optional[Dict[int, float]]]:
     """Load training and test dataset from xyz file"""
     atomic_energies_dict, all_train_configs = data.load_from_xyz(
@@ -80,16 +79,12 @@ def get_dataset_from_xyz(
         )
         train_configs = all_train_configs
     else:
-        if not preprocess_for_evaluation:
-            logging.info(
-                "Using random %s%% of training set for validation", 100 * valid_fraction
-            )
-            train_configs, valid_configs = data.random_train_valid_split(
-                all_train_configs, valid_fraction, seed
-            )
-        else:
-            train_configs = all_train_configs
-            valid_configs = None
+        logging.info(
+            "Using random %s%% of training set for validation", 100 * valid_fraction
+        )
+        train_configs, valid_configs = data.random_train_valid_split(
+            all_train_configs, valid_fraction, seed
+        )
 
     test_configs = []
     if test_path is not None:
