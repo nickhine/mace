@@ -73,7 +73,7 @@ class MACECalculator(Calculator):
                 "stress",
             ]
         elif model_type == "DipoleMACE":
-            self.implemented_properties = ["dipole"]
+            self.implemented_properties = ["dipole","polarizability"]
         elif model_type == "EnergyDipoleMACE":
             self.implemented_properties = [
                 "energy",
@@ -111,6 +111,7 @@ class MACECalculator(Calculator):
                 )
             elif model_type == "DipoleMACE":
                 self.implemented_properties.extend(["dipole_var"])
+                self.implemented_properties.extend(["polarizability_var"])
         if compile_mode is not None:
             print(f"Torch compile is enabled with mode: {compile_mode}")
             self.models = [
@@ -189,7 +190,8 @@ class MACECalculator(Calculator):
             )
         if model_type in ["EnergyDipoleMACE", "DipoleMACE"]:
             dipole = torch.zeros(num_models, 3, device=self.device)
-            dict_of_tensors.update({"dipole": dipole})
+            polarizability = torch.zeros(num_models, 3, 3, device=self.device)
+            dict_of_tensors.update({"dipole": dipole,"polarizability": polarizability})
         return dict_of_tensors
 
     def _prepare_batch(self, batch):
@@ -212,7 +214,7 @@ class MACECalculator(Calculator):
         Calculator.calculate(self, atoms)
 
         # prepare data
-        config = data.config_from_atoms(atoms, charges_key=self.charges_key)
+        config = data.config_from_atoms(atoms, charges_key=self.charges_key, energy_key=self.energy_key)
         data_loader = torch_geometric.dataloader.DataLoader(
             dataset=[
                 data.AtomicData.from_config(
@@ -250,6 +252,7 @@ class MACECalculator(Calculator):
                     ret_tensors["stress"][i] = out["stress"].detach()
             if self.model_type in ["DipoleMACE", "EnergyDipoleMACE"]:
                 ret_tensors["dipole"][i] = out["dipole"].detach()
+                ret_tensors["polarizability"][i] = out["polarizability"].detach()
 
         self.results = {}
         if self.model_type in ["MACE", "EnergyDipoleMACE"]:
@@ -299,9 +302,17 @@ class MACECalculator(Calculator):
             self.results["dipole"] = (
                 torch.mean(ret_tensors["dipole"], dim=0).cpu().numpy()
             )
+            self.results["polarizability"] = (
+                torch.mean(ret_tensors["polarizability"], dim=0).cpu().numpy()
+            )
             if self.num_models > 1:
                 self.results["dipole_var"] = (
                     torch.var(ret_tensors["dipole"], dim=0, unbiased=False)
+                    .cpu()
+                    .numpy()
+                )
+                self.results["polarizability_var"] = (
+                    torch.var(ret_tensors["polarizability"], dim=0, unbiased=False)
                     .cpu()
                     .numpy()
                 )
