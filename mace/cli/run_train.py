@@ -140,8 +140,10 @@ def main() -> None:
             stress_key=args.stress_key,
             virials_key=args.virials_key,
             dipole_key=args.dipole_key,
+            dipole_deriv_key=args.dipole_deriv_key,
             charges_key=args.charges_key,
             polarizability_key=args.polarizability_key,
+            polarizability_deriv_key=args.polarizability_deriv_key,
             keep_isolated_atoms=args.keep_isolated_atoms,
         )
 
@@ -200,6 +202,8 @@ def main() -> None:
         dipole_only = True
         compute_dipole = True
         compute_polarizability = True
+        compute_dipole_deriv = True
+        compute_polarizability_deriv = True
         compute_energy = False
         args.compute_forces = False
         compute_virials = False
@@ -321,6 +325,16 @@ def main() -> None:
             dipole_weight=args.dipole_weight,
             polarizability_weight=args.polarizability_weight,
         )
+    elif args.loss == "dipole_polarizability_deriv":
+        assert (
+            dipole_only is True
+        ), "dipole_polarizability_deriv loss can only be used with AtomicDipolesMACE model"
+        loss_fn = modules.DipolePolarizabilityDerivLoss(
+            dipole_weight=args.dipole_weight,
+            polarizability_weight=args.polarizability_weight,
+            dipole_deriv_weight=args.dipole_deriv_weight,
+            polarizability_deriv_weight=args.polarizability_deriv_weight
+        )
     elif args.loss == "energy_forces_dipole":
         assert dipole_only is False and compute_dipole is True
         loss_fn = modules.WeightedEnergyForcesDipoleLoss(
@@ -361,6 +375,8 @@ def main() -> None:
         "stress": args.compute_stress,
         "dipoles": compute_dipole,
         "polarizability": compute_polarizability,
+        "dipole_deriv": compute_dipole_deriv,
+        "polarizability_deriv": compute_polarizability_deriv,
     }
     logging.info(f"Selected the following outputs: {output_args}")
 
@@ -469,7 +485,8 @@ def main() -> None:
         )
     elif args.model == "AtomicDipolesMACE":
         # std_df = modules.scaling_classes["rms_dipoles_scaling"](train_loader)
-        assert args.loss == "dipole", "Use dipole loss with AtomicDipolesMACE model"
+        assert (args.loss == "dipole") or (args.loss == "dipole_polarizability_deriv"), \
+                "Use dipole or dipole_polarizability_deriv loss with AtomicDipolesMACE model"
         assert (
             args.error_table == "DipoleRMSE"
         ), "Use error_table DipoleRMSE with AtomicDipolesMACE model"

@@ -21,6 +21,9 @@ Forces = np.ndarray  # [..., 3]
 Stress = np.ndarray  # [6, ], [3,3], [9, ]
 Virials = np.ndarray  # [6, ], [3,3], [9, ]
 Charges = np.ndarray  # [..., 1]
+Dipole_Deriv = np.ndarray  # [..., 3]
+Polarizability = np.ndarray  # [3, 3]
+Polarizability_Deriv = np.ndarray  # [..., 3, 3]
 Cell = np.ndarray  # [3,3]
 Pbc = tuple  # (3,)
 
@@ -37,8 +40,10 @@ class Configuration:
     stress: Optional[Stress] = None  # eV/Angstrom^3
     virials: Optional[Virials] = None  # eV
     dipole: Optional[Vector] = None  # Debye
+    dipole_deriv: Optional[Dipole_Deriv] = None  # Debye/Angstrom
     charges: Optional[Charges] = None  # atomic unit
-    polarizability: Optional[Vector] = None  #
+    polarizability: Optional[Polarizability] = None  #
+    polarizability_deriv: Optional[Polarizability_Deriv] = None  #
     cell: Optional[Cell] = None
     pbc: Optional[Pbc] = None
 
@@ -49,6 +54,8 @@ class Configuration:
     virials_weight: float = 1.0  # weight of config virial in loss
     dipole_weight: float = 1.0  # weight of config dipole in loss
     polarizability_weight: float = 1.0  # weight of config polarizability in loss
+    dipole_deriv_weight: float = 1.0  # weight of config dipole derivative in loss
+    polarizability_deriv_weight: float = 1.0  # weight of config polarizability derivative in loss
     config_type: Optional[str] = DEFAULT_CONFIG_TYPE  # config_type of config
 
 
@@ -80,8 +87,10 @@ def config_from_atoms_list(
     stress_key="stress",
     virials_key="virials",
     dipole_key="dipole",
+    dipole_deriv_key="dipole_deriv",
     charges_key="charges",
     polarizability_key="polarizability",
+    polarizability_deriv_key="polarizability_deriv",
     config_type_weights: Dict[str, float] = None,
 ) -> Configurations:
     """Convert list of ase.Atoms into Configurations"""
@@ -98,8 +107,10 @@ def config_from_atoms_list(
                 stress_key=stress_key,
                 virials_key=virials_key,
                 dipole_key=dipole_key,
+                dipole_deriv_key=dipole_deriv_key,
                 charges_key=charges_key,
                 polarizability_key=polarizability_key,
+                polarizability_deriv_key=polarizability_deriv_key,
                 config_type_weights=config_type_weights,
             )
         )
@@ -113,8 +124,10 @@ def config_from_atoms(
     stress_key="stress",
     virials_key="virials",
     dipole_key="dipole",
+    dipole_deriv_key="dipole_deriv",
     charges_key="charges",
     polarizability_key="polarizability",
+    polarizability_deriv_key="polarizability_deriv",
     config_type_weights: Dict[str, float] = None,
 ) -> Configuration:
     """Convert ase.Atoms to Configuration"""
@@ -127,6 +140,8 @@ def config_from_atoms(
     virials = atoms.info.get(virials_key, None)
     dipole = atoms.info.get(dipole_key, None)  # Debye
     polarizability = atoms.info.get(polarizability_key, None)  #
+    dipole_deriv = atoms.arrays.get(dipole_deriv_key, None)  # Debye
+    polarizability_deriv = atoms.arrays.get(polarizability_deriv_key, None)  #
     # Charges default to 0 instead of None if not found
     charges = atoms.arrays.get(charges_key, np.zeros(len(atoms)))  # atomic unit
     atomic_numbers = np.array(
@@ -144,6 +159,8 @@ def config_from_atoms(
     virials_weight = atoms.info.get("config_virials_weight", 1.0)
     dipole_weight = atoms.info.get("config_dipole_weight", 1.0)
     polarizability_weight = atoms.info.get("config_polarizability_weight", 1.0)
+    dipole_deriv_weight = atoms.info.get("config_dipole_deriv_weight", 1.0)
+    polarizability_deriv_weight = atoms.info.get("config_polarizability_deriv_weight", 1.0)
 
     # fill in missing quantities but set their weight to 0.0
     if energy is None:
@@ -160,10 +177,16 @@ def config_from_atoms(
         virials_weight = 0.0
     if dipole is None:
         dipole = np.zeros(3)
-        # dipoles_weight = 0.0
+        dipole_weight = 0.0
     if polarizability is None:
         polarizability = np.zeros((3, 3))
         polarizability_weight = 0.0
+    if dipole_deriv is None:
+        dipole_deriv = np.zeros((len(atoms), 3, 3))
+        dipole_deriv_weight = 0.0
+    if polarizability_deriv is None:
+        polarizability_deriv = np.zeros((len(atoms), 3, 3, 3))
+        polarizability_deriv_weight = 0.0
 
     return Configuration(
         atomic_numbers=atomic_numbers,
@@ -173,8 +196,10 @@ def config_from_atoms(
         stress=stress,
         virials=virials,
         dipole=dipole,
+        dipole_deriv=dipole_deriv,
         charges=charges,
         polarizability=polarizability,
+        polarizability_deriv=polarizability_deriv,
         weight=weight,
         energy_weight=energy_weight,
         forces_weight=forces_weight,
@@ -182,6 +207,8 @@ def config_from_atoms(
         virials_weight=virials_weight,
         dipole_weight=dipole_weight,
         polarizability_weight=polarizability_weight,
+        dipole_deriv_weight=dipole_deriv_weight,
+        polarizability_deriv_weight=polarizability_deriv_weight,
         config_type=config_type,
         pbc=pbc,
         cell=cell,
@@ -212,8 +239,10 @@ def load_from_xyz(
     stress_key: str = "stress",
     virials_key: str = "virials",
     dipole_key: str = "dipole",
+    dipole_deriv_key: str = "dipole_deriv",
     charges_key: str = "charges",
     polarizability_key: str = "polarizability",
+    polarizability_deriv_key: str = "polarizability_deriv",
     extract_atomic_energies: bool = False,
     keep_isolated_atoms: bool = False,
 ) -> Tuple[Dict[int, float], Configurations]:
@@ -289,8 +318,10 @@ def load_from_xyz(
         stress_key=stress_key,
         virials_key=virials_key,
         dipole_key=dipole_key,
+        dipole_deriv_key=dipole_deriv_key,
         charges_key=charges_key,
         polarizability_key=polarizability_key,
+        polarizability_deriv_key=polarizability_deriv_key,
     )
     return atomic_energies_dict, configs
 
@@ -343,6 +374,8 @@ def save_dataset_as_HDF5(dataset: List, out_name: str) -> None:
             grp["virials_weight"] = data.virials_weight
             grp["dipole_weight"] = data.dipole_weight
             grp["polarizability_weight"] = data.polarizability_weight
+            grp["dipole_deriv_weight"] = data.dipole_deriv_weight
+            grp["polarizability_deriv_weight"] = data.polarizability_deriv_weight
             grp["forces"] = data.forces
             grp["energy"] = data.energy
             grp["stress"] = data.stress
@@ -368,6 +401,8 @@ def save_AtomicData_to_HDF5(data, i, h5_file) -> None:
     grp["virials_weight"] = data.virials_weight
     grp["dipole_weight"] = data.dipole_weight
     grp["polarizability_weight"] = data.polarizability_weight
+    grp["dipole_deriv_weight"] = data.dipole_deriv_weight
+    grp["polarizability_deriv_weight"] = data.polarizability_deriv_weight
     grp["forces"] = data.forces
     grp["energy"] = data.energy
     grp["stress"] = data.stress
@@ -400,6 +435,8 @@ def save_configurations_as_HDF5(configurations: Configurations, _, h5_file) -> N
         subgroup["virials_weight"] = write_value(config.virials_weight)
         subgroup["dipole_weight"] = write_value(config.dipole_weight)
         subgroup["polarizability_weight"] = write_value(config.polarizability_weight)
+        subgroup["dipole_deriv_weight"] = write_value(config.dipole_deriv_weight)
+        subgroup["polarizability_deriv_weight"] = write_value(config.polarizability_deriv_weight)
         subgroup["config_type"] = write_value(config.config_type)
 
 

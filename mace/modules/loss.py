@@ -88,15 +88,18 @@ def weighted_mean_squared_error_polarizability(
         )
     )  # []
 
+def weighted_mean_squared_error_dipole_deriv(ref: Batch, pred: TensorDict) -> torch.Tensor:
+    # dipole_deriv: [n_graphs, n_atoms, ]
+    return torch.mean(torch.square((torch.reshape(ref['dipole_deriv'], pred["dipole_deriv"].shape) - pred['dipole_deriv']) ))  # []
 
-def weighted_mean_squared_error_polarizability(
+
+def weighted_mean_squared_error_polarizability_deriv(
     ref: Batch, pred: TensorDict
 ) -> torch.Tensor:
-    # polarizability: [n_graphs, ]
-    num_atoms = (ref.ptr[1:] - ref.ptr[:-1]).view(-1, 1, 1)  # [n_graphs,1]
+    # polarizability_deriv: [n_graphs, n_atoms, ]
     return torch.mean(
         torch.square(
-            (ref["polarizability"].view(-1, 3, 3) - pred["polarizability"]) / num_atoms
+            (ref["polarizability_deriv"].view(-1, 9, 3) - pred["polarizability_deriv"])
         )
     )  # []
 
@@ -370,6 +373,45 @@ class DipoleSingleLoss(torch.nn.Module):
             f"dipole_weight={self.dipole_weight:.3f}), polarizability_weight={self.polarizability_weight:.3f})"
         )
 
+class DipolePolarizabilityDerivLoss(torch.nn.Module):
+    def __init__(self, dipole_weight=1.0, polarizability_weight=1.0, 
+        dipole_deriv_weight=1.0, polarizability_deriv_weight=1.0) -> None:
+        super().__init__()
+        self.register_buffer(
+            "dipole_weight",
+            torch.tensor(dipole_weight, dtype=torch.get_default_dtype()),
+        )
+        self.register_buffer(
+            "polarizability_weight",
+            torch.tensor(polarizability_weight, dtype=torch.get_default_dtype()),
+        )
+        self.register_buffer(
+            "dipole_deriv_weight",
+            torch.tensor(dipole_deriv_weight, dtype=torch.get_default_dtype()),
+        )
+        self.register_buffer(
+            "polarizability_deriv_weight",
+            torch.tensor(polarizability_deriv_weight, dtype=torch.get_default_dtype()),
+        )
+
+    def forward(self, ref: Batch, pred: TensorDict) -> torch.Tensor:
+        return self.dipole_weight * weighted_mean_squared_error_dipole(
+            ref, pred
+        ) + self.polarizability_weight * weighted_mean_squared_error_polarizability(
+            ref, pred
+        ) + self.dipole_deriv_weight * weighted_mean_squared_error_dipole_deriv(
+            ref, pred
+        ) + self.polarizability_deriv_weight * weighted_mean_squared_error_polarizability_deriv(
+            ref, pred
+        ) 
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"dipole_weight={self.dipole_weight:.3f}), polarizability_weight={self.polarizability_weight:.3f})"
+            f"dipole_deriv_weight={self.dipole_deriv_weight:.3f}), "
+            f"polarizability_deriv_weight={self.polarizability_deriv_weight:.3f})"
+        )
 
 class WeightedEnergyForcesDipoleLoss(torch.nn.Module):
     def __init__(self, energy_weight=1.0, forces_weight=1.0, dipole_weight=1.0) -> None:

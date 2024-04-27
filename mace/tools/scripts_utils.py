@@ -40,9 +40,11 @@ def get_dataset_from_xyz(
     forces_key: str = "forces",
     stress_key: str = "stress",
     virials_key: str = "virials",
-    dipole_key: str = "dipoles",
+    dipole_key: str = "dipole",
+    dipole_deriv_key: str = "dipole_deriv",
     charges_key: str = "charges",
     polarizability_key: str = "polarizability",
+    polarizability_deriv_key: str = "polarizability_deriv",
 ) -> Tuple[SubsetCollection, Optional[Dict[int, float]]]:
     """Load training and test dataset from xyz file"""
     atomic_energies_dict, all_train_configs = data.load_from_xyz(
@@ -53,8 +55,10 @@ def get_dataset_from_xyz(
         stress_key=stress_key,
         virials_key=virials_key,
         dipole_key=dipole_key,
+        dipole_deriv_key=dipole_deriv_key,
         charges_key=charges_key,
         polarizability_key=polarizability_key,
+        polarizability_deriv_key=polarizability_deriv_key,
         extract_atomic_energies=True,
         keep_isolated_atoms=keep_isolated_atoms,
     )
@@ -70,8 +74,10 @@ def get_dataset_from_xyz(
             stress_key=stress_key,
             virials_key=virials_key,
             dipole_key=dipole_key,
+            dipole_deriv_key=dipole_deriv_key,
             charges_key=charges_key,
             polarizability_key=polarizability_key,
+            polarizability_deriv_key=polarizability_deriv_key,
             extract_atomic_energies=False,
         )
         logging.info(
@@ -94,9 +100,11 @@ def get_dataset_from_xyz(
             energy_key=energy_key,
             forces_key=forces_key,
             dipole_key=dipole_key,
+            dipole_deriv_key=dipole_deriv_key,
             stress_key=stress_key,
             charges_key=charges_key,
             polarizability_key=polarizability_key,
+            polarizability_deriv_key=polarizability_deriv_key,
             extract_atomic_energies=False,
         )
         # create list of tuples (config_type, list(Atoms))
@@ -312,6 +320,9 @@ def get_loss_fn(
     stress_weight: float,
     virials_weight: float,
     dipole_weight: float,
+    dipole_deriv_weight: float,
+    polarizability_weight: float,
+    polarizability_deriv_weight: float,
     dipole_only: bool,
     compute_dipole: bool,
 ) -> torch.nn.Module:
@@ -339,6 +350,16 @@ def get_loss_fn(
         ), "dipole loss can only be used with AtomicDipolesMACE model"
         loss_fn = modules.DipoleSingleLoss(
             dipole_weight=dipole_weight,
+        )
+    elif loss == "dipole_polarizability_deriv":
+        assert (
+            dipole_only is True
+        ), "dipole_polarizability_deriv loss can only be used with AtomicDipolesMACE model"
+        loss_fn = modules.DipolePolarizabilityDerivLoss(
+            dipole_weight=dipole_weight,
+            polarizability_weight=polarizability_weight,
+            dipole_deriv_weight=dipole_deriv_weight,
+            polarizability_deriv_weight=polarizability_deriv_weight
         )
     elif loss == "energy_forces_dipole":
         assert dipole_only is False and compute_dipole is True

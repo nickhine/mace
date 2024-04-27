@@ -62,7 +62,8 @@ def setup_logger(
 
     ch = logging.StreamHandler(stream=sys.stdout)
     ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    logger.handlers = [ch]
+    #logger.addHandler(ch)
 
     logger.addFilter(lambda _: (rank == 0))
 

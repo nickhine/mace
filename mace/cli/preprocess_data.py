@@ -136,6 +136,8 @@ def main():
         virials_key=args.virials_key,
         dipole_key=args.dipole_key,
         polarizability_key=args.polarizability_key,
+        dipole_deriv_key=args.dipole_deriv_key,
+        polarizability_deriv_key=args.polarizability_deriv_key,
         charges_key=args.charges_key,
     )
 

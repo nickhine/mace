@@ -361,6 +361,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         default="dipole",
     )
     parser.add_argument(
+        "--dipole_deriv_key",
+        help="Key of reference dipole derivatives in training xyz",
+        type=str,
+        default="dipole_deriv",
+    )
+    parser.add_argument(
         "--charges_key",
         help="Key of atomic charges in training xyz",
         type=str,
@@ -371,6 +377,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         help="Key of polarizability in training xyz",
         type=str,
         default="polarizability",
+    )
+    parser.add_argument(
+        "--polarizability_deriv_key",
+        help="Key of polarizability derivative in training xyz",
+        type=str,
+        default="polarizability derivative",
     )
 
     # Loss and optimization
@@ -385,6 +397,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
             "virials",
             "stress",
             "dipole",
+            "dipole_polarizability_deriv",
             "huber",
             "universal",
             "energy_forces_dipole",
@@ -427,7 +440,16 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         default=10.0,
     )
     parser.add_argument(
-        "--dipole_weight", help="weight of dipoles loss", type=float, default=1.0
+        "--dipole_weight",
+        help="weight of dipoles loss",
+        type=float,
+        default=1.0
+    )
+    parser.add_argument(
+        "--dipole_deriv_weight",
+        help="weight of dipoles derivative loss",
+        type=float,
+        default=1.0
     )
     parser.add_argument(
         "--swa_dipole_weight",
@@ -438,6 +460,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--polarizability_weight",
         help="weight of polarizability loss",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--polarizability_deriv_weight",
+        help="weight of polarizability derivative loss",
         type=float,
         default=1.0,
     )

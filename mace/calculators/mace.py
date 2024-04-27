@@ -262,8 +262,8 @@ class MACECalculator(Calculator):
             if self.model_type in ["DipoleMACE", "EnergyDipoleMACE"]:
                 ret_tensors["dipole"][i] = out["dipole"].detach()
                 ret_tensors["polarizability"][i] = out["polarizability"].detach()
-                ret_tensors["dipole_deriv"][i] = out["dmu_dr"].detach()
-                ret_tensors["polarizability_deriv"][i] = out["dalpha_dr"].detach()
+                ret_tensors["dipole_deriv"][i] = out["dipole_deriv"].detach()
+                ret_tensors["polarizability_deriv"][i] = out["polarizability_deriv"].detach()
 
         self.results = {}
         if self.model_type in ["MACE", "EnergyDipoleMACE"]:

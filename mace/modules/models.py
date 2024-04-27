@@ -849,16 +849,16 @@ class AtomicDipolesMACE(torch.nn.Module):
         }
 
         if compute_dielectric_derivatives:
-            dmu_dr = compute_dielectric_gradients(
+            dipole_deriv = compute_dielectric_gradients(
                 dielectric=total_dipole,
                 positions=data["positions"],
             )
-            dalpha_dr = compute_dielectric_gradients(
+            polarizability_deriv = compute_dielectric_gradients(
                 dielectric=total_polarizability.flatten(-2),
                 positions=data["positions"],
             )
-            output["dmu_dr"] = dmu_dr
-            output["dalpha_dr"] = dalpha_dr
+            output["dipole_deriv"] = dipole_deriv
+            output["polarizability_deriv"] = polarizability_deriv
 
         return output
 

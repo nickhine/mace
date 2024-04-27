@@ -452,6 +452,16 @@ class MACELoss(Metric):
                 (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
                 / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
             )
+        #if output.get("polarizability_deriv") is not None and batch.polarizability_deriv is not None:
+        #    self.Alphas_computed += 1.0
+        #    self.alphas.append(batch.polarizability_deriv)
+        #    self.delta_alphas.append(
+        #        batch.polarizability.view(-1, 3, 3) - output["polarizability"]
+        #    )
+        #    self.delta_alphas_per_atom.append(
+        #        (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
+        #        / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
+        #    )
 
     def convert(self, delta: Union[torch.Tensor, List[torch.Tensor]]) -> np.ndarray:
         if isinstance(delta, list):
