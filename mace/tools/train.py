@@ -95,6 +95,14 @@ def valid_err_log(valid_loss, eval_metrics, logger, log_errors, epoch=None):
         logging.info(
             f"Epoch {epoch}: loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye, RMSE_ALPHA_per_atom={error_alpha:.2f}"
         )
+    elif log_errors == "DipolePolarizabilityDerivRMSE":
+        error_mu = eval_metrics["rmse_mu_per_atom"] * 1e3
+        error_alpha = eval_metrics["rmse_alpha_per_atom"] * 1e3
+        error_mu_deriv = eval_metrics["rmse_mu_deriv"] * 1e3
+        error_alpha_deriv = eval_metrics["rmse_alpha_deriv"] * 1e3
+        logging.info(
+            f"Epoch {epoch}: loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye, RMSE_ALPHA_per_atom={error_alpha:.2f}, RMSE_mu_deriv={error_mu_deriv:.2f} mDebye/A, RMSE_alpha_deriv={error_alpha_deriv:.2f}"
+        )
     elif log_errors == "EnergyDipoleRMSE":
         error_e = eval_metrics["rmse_e_per_atom"] * 1e3
         error_f = eval_metrics["rmse_f"] * 1e3
@@ -404,6 +412,12 @@ class MACELoss(Metric):
         self.add_state("alphas", default=[], dist_reduce_fx="cat")
         self.add_state("delta_alphas", default=[], dist_reduce_fx="cat")
         self.add_state("delta_alphas_per_atom", default=[], dist_reduce_fx="cat")
+        self.add_state("Mu_derivs_computed", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("mu_derivs", default=[], dist_reduce_fx="cat")
+        self.add_state("delta_mu_derivs", default=[], dist_reduce_fx="cat")
+        self.add_state("Alpha_derivs_computed", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("alpha_derivs", default=[], dist_reduce_fx="cat")
+        self.add_state("delta_alpha_derivs", default=[], dist_reduce_fx="cat")
 
     def update(self, batch, output):  # pylint: disable=arguments-differ
         loss = self.loss_fn(pred=output, ref=batch)
@@ -452,16 +466,16 @@ class MACELoss(Metric):
                 (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
                 / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
             )
-        #if output.get("polarizability_deriv") is not None and batch.polarizability_deriv is not None:
-        #    self.Alphas_computed += 1.0
-        #    self.alphas.append(batch.polarizability_deriv)
-        #    self.delta_alphas.append(
-        #        batch.polarizability.view(-1, 3, 3) - output["polarizability"]
-        #    )
-        #    self.delta_alphas_per_atom.append(
-        #        (batch.polarizability.view(-1, 3, 3) - output["polarizability"])
-        #        / (batch.ptr[1:] - batch.ptr[:-1]).view(-1, 1, 1)
-        #    )
+        if output.get("dipole_deriv") is not None and batch.dipole_deriv is not None:
+            self.Mu_derivs_computed += 1.0
+            self.mu_derivs.append(batch.dipole_deriv)
+            self.delta_mu_derivs.append(batch.dipole_deriv.view(-1,3,3) - output["dipole_deriv"])
+        if output.get("polarizability_deriv") is not None and batch.polarizability_deriv is not None:
+            self.Alpha_derivs_computed += 1.0
+            self.alpha_derivs.append(batch.polarizability_deriv)
+            self.delta_alpha_derivs.append(
+                batch.polarizability_deriv.view(-1, 9, 3) - output["polarizability_deriv"]
+            )
 
     def convert(self, delta: Union[torch.Tensor, List[torch.Tensor]]) -> np.ndarray:
         if isinstance(delta, list):
@@ -523,5 +537,21 @@ class MACELoss(Metric):
             aux["rmse_alpha_per_atom"] = compute_rmse(delta_alphas_per_atom)
             aux["rel_rmse_alpha"] = compute_rel_rmse(delta_alphas, alphas)
             aux["q95_alpha"] = compute_q95(delta_alphas)
+        if self.Mu_derivs_computed:
+            mu_derivs = self.convert(self.mu_derivs)
+            delta_mu_derivs = self.convert(self.delta_mu_derivs)
+            aux["mae_mu_deriv"] = compute_mae(delta_mu_derivs)
+            aux["rel_mae_mu_deriv"] = compute_rel_mae(delta_mu_derivs, mu_derivs)
+            aux["rmse_mu_deriv"] = compute_rmse(delta_mu_derivs)
+            aux["rel_rmse_mu_deriv"] = compute_rel_rmse(delta_mu_derivs, mu_derivs)
+            aux["q95_mu_deriv"] = compute_q95(delta_mu_derivs)
+        if self.Alpha_derivs_computed:
+            alpha_derivs = self.convert(self.alpha_derivs)
+            delta_alpha_derivs = self.convert(self.delta_alpha_derivs)
+            aux["mae_alpha_deriv"] = compute_mae(delta_alpha_derivs)
+            aux["rel_mae_alpha_deriv"] = compute_rel_mae(delta_alpha_derivs, alpha_derivs)
+            aux["rmse_alpha_deriv"] = compute_rmse(delta_alpha_derivs)
+            aux["rel_rmse_alpha_deriv"] = compute_rel_rmse(delta_alpha_derivs, alpha_derivs)
+            aux["q95_alpha_deriv"] = compute_q95(delta_alpha_derivs)
         
         return aux["loss"], aux

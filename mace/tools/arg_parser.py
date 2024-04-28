@@ -84,6 +84,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
             "TotalMAE",
             "DipoleRMSE",
             "DipoleMAE",
+            "DipolePolarizabilityDerivRMSE",
             "EnergyDipoleRMSE",
         ],
         default="PerAtomRMSE",

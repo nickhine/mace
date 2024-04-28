@@ -599,6 +599,28 @@ def create_error_table(
                     f"{metrics['rel_mae_mu']:.1f}",
                 ]
             )
+        elif table_type == "DipolePolarizabilityDerivRMSE":
+            table.add_row(
+                [
+                    name,
+                    f"{metrics['rmse_mu_per_atom'] * 1000:.2f}",
+                    f"{metrics['rel_rmse_mu']:.1f}",
+                    f"{metrics['rmse_alpha']:.2f}",
+                    f"{metrics['rel_rmse_mu_deriv']:.1f}",
+                    f"{metrics['rmse_alpha_deriv']:.2f}",
+                ]
+            )
+        elif table_type == "DipolePolarizabilityDerivMAE":
+            table.add_row(
+                [
+                    name,
+                    f"{metrics['mae_mu_per_atom'] * 1000:.2f}",
+                    f"{metrics['rel_mae_mu']:.1f}",
+                    f"{metrics['rel_mae_alpha']:.1f}",
+                    f"{metrics['rel_mae_mu_deriv']:.1f}",
+                    f"{metrics['rel_mae_alpha_deriv']:.1f}",
+                ]
+            )
         elif table_type == "EnergyDipoleRMSE":
             table.add_row(
                 [

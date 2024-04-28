@@ -488,8 +488,8 @@ def main() -> None:
         assert (args.loss == "dipole") or (args.loss == "dipole_polarizability_deriv"), \
                 "Use dipole or dipole_polarizability_deriv loss with AtomicDipolesMACE model"
         assert (
-            args.error_table == "DipoleRMSE"
-        ), "Use error_table DipoleRMSE with AtomicDipolesMACE model"
+            (args.error_table == "DipoleRMSE" or args.error_table == "DipolePolarizabilityDerivRMSE")
+        ), "Use error_table DipoleRMSE or DipolePolarizabilityDerivRMSE with AtomicDipolesMACE model"
         model = modules.AtomicDipolesMACE(
             **model_config,
             correlation=args.correlation,
