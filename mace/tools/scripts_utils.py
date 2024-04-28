@@ -480,6 +480,15 @@ def create_error_table(
             "relative MU RMSE %",
             "RMSE ALPHA",
         ]
+    elif table_type == "DipolePolarizabilityDerivRMSE":
+        table.field_names = [
+            "config_type",
+            "RMSE mu / mDebye / atom",
+            "relative MU RMSE %",
+            "RMSE alpha",
+            "RMSE mu deriv",
+            "RMSE alpha deriv",
+        ]
     elif table_type == "DipoleMAE":
         table.field_names = [
             "config_type",
