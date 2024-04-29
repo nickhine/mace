@@ -92,7 +92,7 @@ class AtomicData(torch_geometric.data.Data):
         assert stress is None or stress.shape == (1, 3, 3)
         assert virials is None or virials.shape == (1, 3, 3)
         assert dipole is None or dipole.shape[-1] == 3
-        assert dipole_deriv is None or dipole_deriv.shape[1:] == (num_nodes, 3, 3)
+        assert dipole_deriv is None or dipole_deriv.shape == (num_nodes, 3, 3)
         assert polarizability is None or polarizability.shape == (3, 3)
         assert polarizability_deriv is None or polarizability_deriv.shape == (num_nodes, 3, 3, 3)
         assert charges is None or charges.shape == (num_nodes,)
@@ -235,6 +235,8 @@ class AtomicData(torch_geometric.data.Data):
             if config.dipole_deriv is not None
             else None
         )
+        if dipole_deriv is not None and dipole_deriv.shape[-1] == 9:
+            dipole_deriv = dipole_deriv.reshape((dipole_deriv.shape[1], 3, 3))
         charges = (
             torch.tensor(config.charges, dtype=torch.get_default_dtype())
             if config.charges is not None
