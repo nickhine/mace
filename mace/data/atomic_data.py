@@ -235,7 +235,7 @@ class AtomicData(torch_geometric.data.Data):
             if config.dipole_deriv is not None
             else None
         )
-        if dipole_deriv is not None and dipole_deriv.shape[-1] == 9:
+        if dipole_deriv is not None: # and dipole_deriv.shape[-1] == 9:
             dipole_deriv = dipole_deriv.reshape((dipole_deriv.shape[1], 3, 3))
         charges = (
             torch.tensor(config.charges, dtype=torch.get_default_dtype())

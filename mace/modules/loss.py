@@ -408,8 +408,9 @@ class DipolePolarizabilityDerivLoss(torch.nn.Module):
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
-            f"dipole_weight={self.dipole_weight:.3f}), polarizability_weight={self.polarizability_weight:.3f})"
-            f"dipole_deriv_weight={self.dipole_deriv_weight:.3f}), "
+            f"dipole_weight={self.dipole_weight:.3f}, "
+            f"polarizability_weight={self.polarizability_weight:.3f}, "
+            f"dipole_deriv_weight={self.dipole_deriv_weight:.3f}, "
             f"polarizability_deriv_weight={self.polarizability_deriv_weight:.3f})"
         )
 
