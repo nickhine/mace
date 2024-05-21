@@ -102,6 +102,7 @@ def get_dataset_from_xyz(
             dipole_key=dipole_key,
             dipole_deriv_key=dipole_deriv_key,
             stress_key=stress_key,
+            virials_key=virials_key,
             charges_key=charges_key,
             polarizability_key=polarizability_key,
             polarizability_deriv_key=polarizability_deriv_key,
