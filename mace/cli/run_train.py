@@ -188,7 +188,7 @@ def run(args: argparse.Namespace) -> None:
 
     if (atomic_energies_dict is None or len(atomic_energies_dict) == 0 
         and args.model!="AtomicDipolesMACE"):
-        if args.E0s.lower() == "foundation":
+        if args.E0s is not None and args.E0s.lower() == "foundation":
             assert args.foundation_model is not None
             logging.info("Using atomic energies from foundation model")
             z_table_foundation = AtomicNumberTable(
@@ -224,6 +224,8 @@ def run(args: argparse.Namespace) -> None:
         if args.model == "EnergyDipolesMACE":
             compute_dipole = True
             compute_polarizability = True
+            compute_dipole_deriv = False
+            compute_polarizability_deriv = False
             compute_energy = True
             args.compute_forces = True
             compute_virials = False
@@ -232,6 +234,8 @@ def run(args: argparse.Namespace) -> None:
             compute_energy = True
             compute_dipole = False
             compute_polarizability = False
+            compute_dipole_deriv = False
+            compute_polarizability_deriv = False
         atomic_energies: np.ndarray = np.array(
             [atomic_energies_dict[z] for z in z_table.zs]
         )
