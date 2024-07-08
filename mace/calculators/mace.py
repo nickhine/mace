@@ -57,6 +57,7 @@ class MACECalculator(Calculator):
         charges_key="Qs",
         model_type="MACE",
         compile_mode=None,
+        fullgraph=True,
         **kwargs,
     ):
         Calculator.__init__(self, **kwargs)
@@ -118,7 +119,7 @@ class MACECalculator(Calculator):
                 torch.compile(
                     prepare(extract_load)(f=model_path, map_location=device),
                     mode=compile_mode,
-                    fullgraph=True,
+                    fullgraph=fullgraph,
                 )
                 for model_path in model_paths
             ]
@@ -202,8 +203,7 @@ class MACECalculator(Calculator):
                 }
             )
         return dict_of_tensors
-    
-    
+
     def _atoms_to_batch(self, atoms):
         config = data.config_from_atoms(atoms, charges_key=self.charges_key)
         data_loader = torch_geometric.dataloader.DataLoader(
@@ -218,7 +218,6 @@ class MACECalculator(Calculator):
         )
         batch = next(iter(data_loader)).to(self.device)
         return batch
-
 
     def _clone_batch(self, batch):
         batch_clone = batch.clone()
@@ -338,6 +337,28 @@ class MACECalculator(Calculator):
                     .cpu()
                     .numpy()
                 )
+
+    def get_hessian(self, atoms=None):
+        if atoms is None and self.atoms is None:
+            raise ValueError("atoms not set")
+        if atoms is None:
+            atoms = self.atoms
+        if self.model_type != "MACE":
+            raise NotImplementedError("Only implemented for MACE models")
+        batch = self._atoms_to_batch(atoms)
+        hessians = [
+            model(
+                self._clone_batch(batch).to_dict(),
+                compute_hessian=True,
+                compute_stress=False,
+                training=self.use_compile,
+            )["hessian"]
+            for model in self.models
+        ]
+        hessians = [hessian.detach().cpu().numpy() for hessian in hessians]
+        if self.num_models == 1:
+            return hessians[0]
+        return hessians
 
     def get_descriptors(self, atoms=None, invariants_only=True, num_layers=-1):
         """Extracts the descriptors from MACE model.

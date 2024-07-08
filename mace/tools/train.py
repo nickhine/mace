@@ -184,7 +184,8 @@ def train(
         # Train
         if distributed:
             train_sampler.set_epoch(epoch)
-
+        if "ScheduleFree" in type(optimizer).__name__:
+            optimizer.train()
         train_one_epoch(
             model=model,
             loss_fn=loss_fn,
@@ -210,6 +211,8 @@ def train(
             param_context = (
                 ema.average_parameters() if ema is not None else nullcontext()
             )
+            if "ScheduleFree" in type(optimizer).__name__:
+                optimizer.eval()
             with param_context:
                 valid_loss, eval_metrics = evaluate(
                     model=model_to_evaluate,
