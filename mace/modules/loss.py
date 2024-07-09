@@ -88,18 +88,6 @@ def weighted_mean_squared_error_polarizability(
     )  # []
 
 
-def weighted_mean_squared_error_polarizability(
-    ref: Batch, pred: TensorDict
-) -> torch.Tensor:
-    # polarizability: [n_graphs, ]
-    num_atoms = (ref.ptr[1:] - ref.ptr[:-1]).view(-1, 1, 1)  # [n_graphs,1]
-    return torch.mean(
-        torch.square(
-            (ref["polarizability"].view(-1, 3, 3) - pred["polarizability"]) / num_atoms
-        )
-    )  # []
-
-
 def conditional_mse_forces(ref: Batch, pred: TensorDict) -> torch.Tensor:
     # forces: [n_atoms, 3]
     configs_weight = torch.repeat_interleave(
