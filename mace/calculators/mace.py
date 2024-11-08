@@ -360,8 +360,8 @@ class MACECalculator(Calculator):
             raise ValueError("atoms not set")
         if atoms is None:
             atoms = self.atoms
-        if self.model_type != "MACE":
-            raise NotImplementedError("Only implemented for MACE models")
+        if not(self.model_type == "MACE" or self.model_type == "EnergyDipoleMACE"):
+            raise NotImplementedError("Only implemented for MACE and EnergyDipoleMACE models")
         batch = self._atoms_to_batch(atoms)
         hessians = [
             model(

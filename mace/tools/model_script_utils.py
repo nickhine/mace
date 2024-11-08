@@ -225,5 +225,6 @@ def _build_model(
                 "RealAgnosticInteractionBlock"
             ],
             MLP_irreps=o3.Irreps(args.MLP_irreps),
+            heads=heads,
         )
     raise RuntimeError(f"Unknown model: '{args.model}'")

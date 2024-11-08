@@ -89,15 +89,19 @@ class NonLinearReadoutBlock(torch.nn.Module):
 
 @compile_mode("script")
 class LinearDipoleReadoutBlock(torch.nn.Module):
-    def __init__(self, irreps_in: o3.Irreps, dipole_only: bool = False):
+    def __init__(self, irreps_in: o3.Irreps, num_heads: int, dipole_only: bool = False):
         super().__init__()
         if dipole_only:
-            self.irreps_out = o3.Irreps("1x1o")
+            self.irreps_out = o3.Irreps(f"{num_heads}x1o")
         else:
-            self.irreps_out = o3.Irreps("1x0e + 1x1o")
+            self.irreps_out = o3.Irreps(f"{num_heads}x0e + {num_heads}x1o")
         self.linear = o3.Linear(irreps_in=irreps_in, irreps_out=self.irreps_out)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # [n_nodes, irreps]  # [..., ]
+    def forward(
+        self,
+        x: torch.Tensor,
+        heads: Optional[torch.Tensor] = None,  # pylint: disable=unused-argument
+    ) -> torch.Tensor:  # [n_nodes, irreps]  # [..., ]
         return self.linear(x)  # [n_nodes, 1]
 
 
@@ -108,14 +112,15 @@ class NonLinearDipoleReadoutBlock(torch.nn.Module):
         irreps_in: o3.Irreps,
         MLP_irreps: o3.Irreps,
         gate: Callable,
+        num_heads: int,
         dipole_only: bool = False,
     ):
         super().__init__()
         self.hidden_irreps = MLP_irreps
         if dipole_only:
-            self.irreps_out = o3.Irreps("1x1o")
+            self.irreps_out = o3.Irreps(f"{num_heads}x1o")
         else:
-            self.irreps_out = o3.Irreps("1x0e + 1x1o")
+            self.irreps_out = o3.Irreps(f"{num_heads}x0e + {num_heads}x1o")
         irreps_scalars = o3.Irreps(
             [(mul, ir) for mul, ir in MLP_irreps if ir.l == 0 and ir in self.irreps_out]
         )
@@ -136,7 +141,8 @@ class NonLinearDipoleReadoutBlock(torch.nn.Module):
             irreps_in=self.hidden_irreps, irreps_out=self.irreps_out
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:  # [n_nodes, irreps]  # [..., ]
+    def forward(self, x: torch.Tensor, heads: Optional[torch.Tensor] = None
+            ) -> torch.Tensor:  # [n_nodes, irreps]  # [..., ]
         x = self.equivariant_nonlin(self.linear_1(x))
         return self.linear_2(x)  # [n_nodes, 1]
 

@@ -91,7 +91,7 @@ def get_dataset_from_xyz(
             all_train_configs, valid_fraction, seed, work_dir
         )
         logging.info(
-            f"Validaton set contains {len(valid_configs)} configurations [{np.sum([1 if config.energy else 0 for config in valid_configs])} energy, {np.sum([config.forces.size for config in valid_configs])} forces]"
+            f"Validation set contains {len(valid_configs)} configurations [{np.sum([1 if config.energy else 0 for config in valid_configs])} energy, {np.sum([config.forces.size for config in valid_configs])} forces]"
         )
 
     test_configs = []

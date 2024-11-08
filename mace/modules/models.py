@@ -876,6 +876,7 @@ class EnergyDipolesMACE(torch.nn.Module):
         gate: Optional[Callable],
         atomic_energies: Optional[np.ndarray],
         radial_MLP: Optional[List[int]] = None,
+        heads: Optional[List[str]] = None,
     ):
         super().__init__()
         self.register_buffer(
@@ -885,6 +886,9 @@ class EnergyDipolesMACE(torch.nn.Module):
         self.register_buffer(
             "num_interactions", torch.tensor(num_interactions, dtype=torch.int64)
         )
+        if heads is None:
+            heads = ["default"]
+        self.heads = heads
         # Embedding
         node_attr_irreps = o3.Irreps([(num_elements, (0, 1))])
         node_feats_irreps = o3.Irreps([(hidden_irreps.count(o3.Irrep(0, 1)), (0, 1))])
@@ -937,7 +941,9 @@ class EnergyDipolesMACE(torch.nn.Module):
         self.products = torch.nn.ModuleList([prod])
 
         self.readouts = torch.nn.ModuleList()
-        self.readouts.append(LinearDipoleReadoutBlock(hidden_irreps, dipole_only=False))
+        self.readouts.append(
+            LinearDipoleReadoutBlock(hidden_irreps, len(heads), dipole_only=False)
+        )
 
         for i in range(num_interactions - 1):
             if i == num_interactions - 2:
@@ -971,12 +977,14 @@ class EnergyDipolesMACE(torch.nn.Module):
             if i == num_interactions - 2:
                 self.readouts.append(
                     NonLinearDipoleReadoutBlock(
-                        hidden_irreps_out, MLP_irreps, gate, dipole_only=False
+                        hidden_irreps_out,
+                        (len(heads) * MLP_irreps).simplify(),
+                        gate, len(heads), dipole_only=False
                     )
                 )
             else:
                 self.readouts.append(
-                    LinearDipoleReadoutBlock(hidden_irreps, dipole_only=False)
+                    LinearDipoleReadoutBlock(hidden_irreps, len(heads), dipole_only=False)
                 )
 
     def forward(
@@ -987,12 +995,18 @@ class EnergyDipolesMACE(torch.nn.Module):
         compute_virials: bool = False,
         compute_stress: bool = False,
         compute_displacement: bool = False,
+        compute_hessian: bool = False,
     ) -> Dict[str, Optional[torch.Tensor]]:
         # Setup
         data["node_attrs"].requires_grad_(True)
         data["positions"].requires_grad_(True)
         num_graphs = data["ptr"].numel() - 1
         num_atoms_arange = torch.arange(data["positions"].shape[0])
+        node_heads = (
+            data["head"][data["batch"]]
+            if "head" in data
+            else torch.zeros_like(data["batch"])
+        )
         displacement = torch.zeros(
             (num_graphs, 3, 3),
             dtype=data["positions"].dtype,
@@ -1014,11 +1028,11 @@ class EnergyDipolesMACE(torch.nn.Module):
 
         # Atomic energies
         node_e0 = self.atomic_energies_fn(data["node_attrs"])[
-            num_atoms_arange, data["head"][data["batch"]]
+            num_atoms_arange, node_heads
         ]
         e0 = scatter_sum(
-            src=node_e0, index=data["batch"], dim=-1, dim_size=num_graphs
-        )  # [n_graphs,]
+            src=node_e0, index=data["batch"], dim=0, dim_size=num_graphs
+        )  # [n_graphs, n_heads]
 
         # Embeddings
         node_feats = self.node_embedding(data["node_attrs"])
@@ -1051,14 +1065,18 @@ class EnergyDipolesMACE(torch.nn.Module):
                 sc=sc,
                 node_attrs=data["node_attrs"],
             )
-            node_out = readout(node_feats).squeeze(-1)  # [n_nodes, ]
-            # node_energies = readout(node_feats).squeeze(-1)  # [n_nodes, ]
-            node_energies = node_out[:, 0]
+            node_out = readout(node_feats, node_heads)  # [n_nodes, len(heads)]
+            node_energies = node_out[num_atoms_arange, node_heads]  # [n_nodes, ]
             energy = scatter_sum(
-                src=node_energies, index=data["batch"], dim=-1, dim_size=num_graphs
+                src=node_energies,
+                index=data["batch"],
+                dim=-1,
+                dim_size=num_graphs
             )  # [n_graphs,]
             energies.append(energy)
-            node_dipoles = node_out[:, 1:]
+            base_range = len(self.heads) + node_heads*3
+            dipole_range = base_range.unsqueeze(1) + torch.arange(3,device=base_range.device)
+            node_dipoles = node_out[num_atoms_arange.unsqueeze(1).repeat(1, 3), dipole_range]  # [n_nodes, ]
             dipoles.append(node_dipoles)
 
         # Compute the energies and dipoles
@@ -1084,7 +1102,7 @@ class EnergyDipolesMACE(torch.nn.Module):
         )  # [n_graphs,3]
         total_dipole = total_dipole + baseline
 
-        forces, virials, stress, _ = get_outputs(
+        forces, virials, stress, hessian = get_outputs(
             energy=total_energy,
             positions=data["positions"],
             displacement=displacement,
@@ -1093,6 +1111,7 @@ class EnergyDipolesMACE(torch.nn.Module):
             compute_force=compute_force,
             compute_virials=compute_virials,
             compute_stress=compute_stress,
+            compute_hessian=compute_hessian,
         )
 
         output = {
@@ -1103,6 +1122,7 @@ class EnergyDipolesMACE(torch.nn.Module):
             "virials": virials,
             "stress": stress,
             "displacement": displacement,
+            "hessian": hessian,
             "dipole": total_dipole,
             "atomic_dipoles": atomic_dipoles,
         }
