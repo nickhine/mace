@@ -247,6 +247,17 @@ def load_from_xyz(
             except Exception as e:  # pylint: disable=W0703
                 logging.error(f"Failed to extract forces: {e}")
                 atoms.arrays["REF_forces"] = None
+    if dipole_key == "dipole":
+        logging.warning(
+            "Since ASE version 3.23.0b1, using dipole_key 'dipole' is no longer safe when communicating between MACE and ASE. We recommend using a different key, rewriting 'dipole' to 'REF_dipole'. You need to use --dipole_key='REF_dipole' to specify the chosen key name."
+        )
+        dipole_key = "REF_dipole"
+        for atoms in atoms_list:
+            try:
+                atoms.arrays["REF_dipole"] = atoms.get_dipole_moment()
+            except Exception as e:  # pylint: disable=W0703
+                logging.error(f"Failed to extract dipole: {e}")
+                atoms.arrays["REF_dipole"] = None
     if stress_key == "stress":
         logging.warning(
             "Since ASE version 3.23.0b1, using stress_key 'stress' is no longer safe when communicating between MACE and ASE. We recommend using a different key, rewriting 'stress' to 'REF_stress'. You need to use --stress_key='REF_stress' to specify the chosen key name."

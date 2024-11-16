@@ -66,7 +66,7 @@ def get_dataset_from_xyz(
         head_name=head_name,
     )
     logging.info(
-        f"Training set [{len(all_train_configs)} configs, {np.sum([1 if config.energy else 0 for config in all_train_configs])} energy, {np.sum([config.forces.size for config in all_train_configs])} forces] loaded from '{train_path}'"
+        f"Training set [{len(all_train_configs)} configs, {np.sum([1 if config.energy else 0 for config in all_train_configs])} energy, {np.sum([config.forces.size for config in all_train_configs])} forces, {np.sum([1 if config.dipole is not None and (config.dipole != 0.0).any() else 0 for config in all_train_configs])} dipole] loaded from '{train_path}'"
     )
     if valid_path is not None:
         _, valid_configs = data.load_from_xyz(
@@ -83,7 +83,7 @@ def get_dataset_from_xyz(
             head_name=head_name,
         )
         logging.info(
-            f"Validation set [{len(valid_configs)} configs, {np.sum([1 if config.energy else 0 for config in valid_configs])} energy, {np.sum([config.forces.size for config in valid_configs])} forces] loaded from '{valid_path}'"
+            f"Validation set [{len(valid_configs)} configs, {np.sum([1 if config.energy else 0 for config in valid_configs])} energy, {np.sum([config.forces.size for config in valid_configs])} forces, {np.sum([1 if config.dipole is not None and (config.dipole != 0.0).any() else 0 for config in valid_configs])} dipole] loaded from '{valid_path}'"
         )
         train_configs = all_train_configs
     else:
@@ -91,7 +91,7 @@ def get_dataset_from_xyz(
             all_train_configs, valid_fraction, seed, work_dir
         )
         logging.info(
-            f"Validation set contains {len(valid_configs)} configurations [{np.sum([1 if config.energy else 0 for config in valid_configs])} energy, {np.sum([config.forces.size for config in valid_configs])} forces]"
+            f"Validation set contains {len(valid_configs)} configurations [{np.sum([1 if config.energy else 0 for config in valid_configs])} energy, {np.sum([config.forces.size for config in valid_configs])} forces, {np.sum([1 if config.dipole is not None and (config.dipole != 0.0).any() else 0 for config in valid_configs])} dipole]"
         )
 
     test_configs = []
@@ -116,7 +116,7 @@ def get_dataset_from_xyz(
         )
         for name, tmp_configs in test_configs:
             logging.info(
-                f"{name}: {len(tmp_configs)} configs, {np.sum([1 if config.energy else 0 for config in tmp_configs])} energy, {np.sum([config.forces.size for config in tmp_configs])} forces"
+                f"{name}: {len(tmp_configs)} configs, {np.sum([1 if config.energy else 0 for config in tmp_configs])} energy, {np.sum([config.forces.size for config in tmp_configs])} forces, {np.sum([1 if config.dipole is not None and (config.dipole != 0.0).any() else 0 for config in tmp_configs])} dipole"
             )
 
     return (

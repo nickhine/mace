@@ -186,6 +186,7 @@ class MACECalculator(Calculator):
             self.heads = self.models[0].heads
         except AttributeError:
             self.heads = ["Default"]
+            self.models[0].heads = ["Default"]
         model_dtype = get_model_dtype(self.models[0])
         if default_dtype == "":
             print(
