@@ -114,13 +114,14 @@ class NonLinearReadoutBlock(torch.nn.Module):
 
 @compile_mode("script")
 class LinearDipoleReadoutBlock(torch.nn.Module):
-def __init__(
+    def __init__(
         self,
         irreps_in: o3.Irreps,
         num_heads: int,
         dipole_only: bool = False,
         cueq_config: Optional[CuEquivarianceConfig] = None,
-    ):        super().__init__()
+    ):
+        super().__init__()
         if dipole_only:
             self.irreps_out = o3.Irreps(f"{num_heads}x1o")
         else:
