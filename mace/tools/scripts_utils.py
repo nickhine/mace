@@ -536,6 +536,7 @@ def get_loss_fn(
         ), "dipole loss can only be used with AtomicDipolesMACE model"
         loss_fn = modules.DipoleSingleLoss(
             dipole_weight=args.dipole_weight,
+            polarizability_weight=args.polarizability_weight,
         )
     elif args.loss == "dipole_polarizability_deriv":
         assert (

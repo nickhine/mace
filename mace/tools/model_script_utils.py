@@ -24,6 +24,9 @@ def configure_model(
         "virials": compute_virials,
         "stress": args.compute_stress,
         "dipoles": args.compute_dipole,
+        "polarizability": args.compute_polarizability,
+        "dipole_deriv": args.compute_dipole_deriv,
+        "polarizability_deriv": args.compute_polarizability_deriv,
     }
     logging.info(
         f"During training the following quantities will be reported: {', '.join([f'{report}' for report, value in output_args.items() if value])}"
@@ -199,10 +202,12 @@ def _build_model(
             MLP_irreps=o3.Irreps(args.MLP_irreps),
         )
     if args.model == "AtomicDipolesMACE":
-        assert args.loss == "dipole", "Use dipole loss with AtomicDipolesMACE model"
+        # std_df = modules.scaling_classes["rms_dipoles_scaling"](train_loader)
+        assert (args.loss == "dipole") or (args.loss == "dipole_polarizability_deriv"), \
+                "Use dipole or dipole_polarizability_deriv loss with AtomicDipolesMACE model"
         assert (
-            args.error_table == "DipoleRMSE"
-        ), "Use error_table DipoleRMSE with AtomicDipolesMACE model"
+            (args.error_table == "DipoleRMSE" or args.error_table == "DipolePolarizabilityDerivRMSE")
+        ), "Use error_table DipoleRMSE or DipolePolarizabilityDerivRMSE with AtomicDipolesMACE model"
         return modules.AtomicDipolesMACE(
             **model_config,
             correlation=args.correlation,
