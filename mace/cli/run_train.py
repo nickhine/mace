@@ -391,7 +391,8 @@ def run(args: argparse.Namespace) -> None:
     # Atomic energies
     atomic_energies_dict = {}
     for head_config in head_configs:
-        if head_config.atomic_energies_dict is None or len(head_config.atomic_energies_dict) == 0:
+        if (head_config.atomic_energies_dict is None or len(head_config.atomic_energies_dict) == 0
+            and args.model!="AtomicDipolesMACE"):
             assert head_config.E0s is not None, "Atomic energies must be provided"
             if check_path_ase_read(head_config.train_file) and head_config.E0s.lower() != "foundation":
                 atomic_energies_dict[head_config.head_name] = get_atomic_energies(
@@ -443,9 +444,9 @@ def run(args: argparse.Namespace) -> None:
     if args.model == "AtomicDipolesMACE":
         atomic_energies = None
         dipole_only = True
-        compute_dipole = True
 
         args.compute_polarizability = True
+        args.compute_dipole = True
         args.compute_dipole_deriv = True
         args.compute_polarizability_deriv = True
         args.compute_energy = False
