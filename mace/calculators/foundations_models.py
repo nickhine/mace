@@ -11,7 +11,7 @@ from .mace import MACECalculator
 
 module_dir = os.path.dirname(__file__)
 local_model_path = os.path.join(
-    module_dir, "foundations_models/2023-12-03-mace-mp.model"
+    module_dir, "foundations_models/mace-mpa-0-medium.model"
 )
 
 
@@ -26,7 +26,7 @@ def download_mace_mp_checkpoint(model: Union[str, Path] = None) -> str:
     Returns:
         str: Path to the downloaded (or cached, if previously loaded) checkpoint file.
     """
-    if model in (None, "medium") and os.path.isfile(local_model_path):
+    if model in (None, "medium-mpa-0") and os.path.isfile(local_model_path):
         return local_model_path
 
     urls = {
@@ -38,13 +38,33 @@ def download_mace_mp_checkpoint(model: Union[str, Path] = None) -> str:
         "small-0b2": "https://github.com/ACEsuit/mace-mp/releases/download/mace_mp_0b2/mace-small-density-agnesi-stress.model",
         "medium-0b2": "https://github.com/ACEsuit/mace-mp/releases/download/mace_mp_0b2/mace-medium-density-agnesi-stress.model",
         "large-0b2": "https://github.com/ACEsuit/mace-mp/releases/download/mace_mp_0b2/mace-large-density-agnesi-stress.model",
+        "medium-0b3": "https://github.com/ACEsuit/mace-mp/releases/download/mace_mp_0b3/mace-mp-0b3-medium.model",
+        "medium-mpa-0": "https://github.com/ACEsuit/mace-mp/releases/download/mace_mpa_0/mace-mpa-0-medium.model",
     }
 
     checkpoint_url = (
-        urls.get(model, urls["medium"])
-        if model in (None, "small", "medium", "large", "small-0b", "medium-0b", "small-0b2", "medium-0b2", "large-0b2")
+        urls.get(model, urls["medium-mpa-0"])
+        if model
+        in (
+            None,
+            "small",
+            "medium",
+            "large",
+            "small-0b",
+            "medium-0b",
+            "small-0b2",
+            "medium-0b2",
+            "large-0b2",
+            "medium-0b3",
+            "medium-mpa-0",
+        )
         else model
     )
+
+    if checkpoint_url == urls["medium-mpa-0"]:
+        print(
+            "Using medium MPA-0 model as default MACE-MP model, to use previous (before 3.10) default model please specify 'medium' as model argument"
+        )
 
     cache_dir = os.path.expanduser("~/.cache/mace")
     checkpoint_url_name = "".join(
@@ -106,9 +126,19 @@ def mace_mp(
         MACECalculator: trained on the MPtrj dataset (unless model otherwise specified).
     """
     try:
-        if model in (None, "small", "medium", "large", "small-0b", "medium-0b", "small-0b2", "medium-0b2", "large-0b2") or str(model).startswith(
-            "https:"
-        ):
+        if model in (
+            None,
+            "small",
+            "medium",
+            "large",
+            "medium-mpa-0",
+            "small-0b",
+            "medium-0b",
+            "small-0b2",
+            "medium-0b2",
+            "medium-0b3",
+            "large-0b2",
+        ) or str(model).startswith("https:"):
             model_path = download_mace_mp_checkpoint(model)
             print(f"Using Materials Project MACE for MACECalculator with {model_path}")
         else:
