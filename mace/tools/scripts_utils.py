@@ -51,25 +51,6 @@ def get_dataset_from_xyz(
     polarizability_deriv_key: str = "polarizability_deriv",
     head_key: str = "head",
 ) -> Tuple[SubsetCollection, Optional[Dict[int, float]]]:
-<<<<<<< HEAD
-    """Load training and test dataset from xyz file"""
-    atomic_energies_dict, all_train_configs = data.load_from_xyz(
-        file_path=train_path,
-        config_type_weights=config_type_weights,
-        energy_key=energy_key,
-        forces_key=forces_key,
-        stress_key=stress_key,
-        virials_key=virials_key,
-        dipole_key=dipole_key,
-        dipole_deriv_key=dipole_deriv_key,
-        charges_key=charges_key,
-        polarizability_key=polarizability_key,
-        polarizability_deriv_key=polarizability_deriv_key,
-        head_key=head_key,
-        extract_atomic_energies=True,
-        keep_isolated_atoms=keep_isolated_atoms,
-        head_name=head_name,
-=======
     """
     Load training, validation, and test datasets from xyz files.
 
@@ -88,7 +69,10 @@ def get_dataset_from_xyz(
         stress_key: Key for stress values in xyz file
         virials_key: Key for virials values in xyz file
         dipole_key: Key for dipole values in xyz file
+        dipole_deriv_key: Key for dipole derivatives in xyz file
         charges_key: Key for charges values in xyz file
+        polarizability_key: Key for polarizability values in xyz file
+        polarizability_deriv_key: Key for polarizability derivative values in xyz file
         head_key: Key for head values in xyz file
 
     Returns:
@@ -102,7 +86,6 @@ def get_dataset_from_xyz(
         [valid_path]
         if isinstance(valid_path, str) and valid_path is not None
         else valid_path
->>>>>>> main
     )
     test_paths = (
         [test_path]
@@ -222,32 +205,6 @@ def get_dataset_from_xyz(
             f"{np.sum([1 if getattr(config, 'stress', None) is not None else 0 for config in valid_configs])} stresses]"
         )
 
-<<<<<<< HEAD
-    test_configs = []
-    if test_path is not None:
-        _, all_test_configs = data.load_from_xyz(
-            file_path=test_path,
-            config_type_weights=config_type_weights,
-            energy_key=energy_key,
-            forces_key=forces_key,
-            dipole_key=dipole_key,
-            dipole_deriv_key=dipole_deriv_key,
-            stress_key=stress_key,
-            virials_key=virials_key,
-            charges_key=charges_key,
-            polarizability_key=polarizability_key,
-            polarizability_deriv_key=polarizability_deriv_key,
-            head_key=head_key,
-            extract_atomic_energies=False,
-            head_name=head_name,
-        )
-        # create list of tuples (config_type, list(Atoms))
-        test_configs = data.test_config_types(all_test_configs)
-        logging.info(
-            f"Test set ({len(all_test_configs)} configs) loaded from '{test_path}':"
-        )
-        for name, tmp_configs in test_configs:
-=======
     # Process test files if provided
     test_configs_by_type = []
     if test_paths:
@@ -258,16 +215,18 @@ def get_dataset_from_xyz(
                 energy_key=energy_key,
                 forces_key=forces_key,
                 dipole_key=dipole_key,
+                dipole_deriv_key=dipole_deriv_key,
                 stress_key=stress_key,
                 virials_key=virials_key,
                 charges_key=charges_key,
+                polarizability_key=polarizability_key,
+                polarizability_deriv_key=polarizability_deriv_key,
                 head_key=head_key,
                 extract_atomic_energies=False,
                 head_name=head_name,
             )
             all_test_configs.extend(test_configs)
 
->>>>>>> main
             logging.info(
                 f"Test file {i+1}/{len(test_paths)} [{len(test_configs)} configs, "
                 f"{np.sum([1 if config.energy else 0 for config in test_configs])} energy, "
@@ -1002,5 +961,3 @@ def dict_to_namespace(dictionary):
     for key, value in dictionary.items():
         setattr(namespace, key, value)
     return namespace
-
-

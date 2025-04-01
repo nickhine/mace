@@ -264,7 +264,10 @@ def run(args) -> None:
                 stress_key=head_config.stress_key,
                 virials_key=head_config.virials_key,
                 dipole_key=head_config.dipole_key,
+                dipole_deriv_key=head_config.dipole_deriv_key,
                 charges_key=head_config.charges_key,
+                polarizability_key=head_config.polarizability_key,
+                polarizability_deriv_key=head_config.polarizability_deriv_key,
                 head_name=head_config.head_name,
                 keep_isolated_atoms=head_config.keep_isolated_atoms,
             )
@@ -327,27 +330,6 @@ def run(args) -> None:
                 f"Using foundation model for multiheads finetuning with {args.pt_train_file}"
             )
             heads = list(dict.fromkeys(["pt_head"] + heads))
-<<<<<<< HEAD
-            collections, atomic_energies_dict = get_dataset_from_xyz(
-                work_dir=args.work_dir,
-                train_path=args.pt_train_file,
-                valid_path=args.pt_valid_file,
-                valid_fraction=args.valid_fraction,
-                config_type_weights=None,
-                test_path=None,
-                seed=args.seed,
-                energy_key=args.energy_key,
-                forces_key=args.forces_key,
-                stress_key=args.stress_key,
-                virials_key=args.virials_key,
-                dipole_key=args.dipole_key,
-                dipole_deriv_key=args.dipole_deriv_key,
-                charges_key=args.charges_key,
-                polarizability_key=args.polarizability_key,
-                polarizability_deriv_key=args.polarizability_deriv_key,
-                head_name="pt_head",
-                keep_isolated_atoms=args.keep_isolated_atoms,
-=======
 
             # Use pt-specific keys if provided, otherwise fall back to general keys
             pt_energy_key = args.pt_energy_key or args.energy_key
@@ -355,12 +337,14 @@ def run(args) -> None:
             pt_stress_key = args.pt_stress_key or args.stress_key
             pt_virials_key = args.pt_virials_key or args.virials_key
             pt_dipole_key = args.pt_dipole_key or args.dipole_key
+            pt_dipole_deriv_key = args.pt_dipole_deriv_key or args.dipole_deriv_key
             pt_charges_key = args.pt_charges_key or args.charges_key
+            pt_polarizability_key = args.pt_polarizability_key or args.polarizability_key
+            pt_polarizability_deriv_key = args.pt_polarizability_deriv_key or args.polarizability_deriv_key
 
             logging.info(
                 f"Using the following keys for pt_head: energy={pt_energy_key}, forces={pt_forces_key}, "
                 f"stress={pt_stress_key}, virials={pt_virials_key}, dipole={pt_dipole_key}, charges={pt_charges_key}"
->>>>>>> main
             )
 
             # Normalize file paths
@@ -380,24 +364,15 @@ def run(args) -> None:
                 statistics_file=args.statistics_file,
                 valid_fraction=args.valid_fraction,
                 config_type_weights=None,
-<<<<<<< HEAD
-                energy_key=args.energy_key,
-                forces_key=args.forces_key,
-                stress_key=args.stress_key,
-                virials_key=args.virials_key,
-                dipole_key=args.dipole_key,
-                dipole_deriv_key=args.dipole_deriv_key,
-                charges_key=args.charges_key,
-                polarizability_key=args.polarizability_key,
-                polarizability_deriv_key=args.polarizability_deriv_key,
-=======
                 energy_key=pt_energy_key,
                 forces_key=pt_forces_key,
                 stress_key=pt_stress_key,
                 virials_key=pt_virials_key,
                 dipole_key=pt_dipole_key,
+                dipole_deriv_key=pt_dipole_deriv_key,
                 charges_key=pt_charges_key,
->>>>>>> main
+                polarizability_key=pt_polarizability_key,
+                polarizability_deriv_key=pt_polarizability_deriv_key,
                 keep_isolated_atoms=args.keep_isolated_atoms,
                 avg_num_neighbors=model_foundation.interactions[0].avg_num_neighbors,
                 compute_avg_num_neighbors=False,
@@ -418,7 +393,10 @@ def run(args) -> None:
                     stress_key=pt_stress_key,
                     virials_key=pt_virials_key,
                     dipole_key=pt_dipole_key,
+                    dipole_deriv_key=pt_dipole_deriv_key,
                     charges_key=pt_charges_key,
+                    polarizability_key=pt_polarizability_key,
+                    polarizability_deriv_key=pt_polarizability_deriv_key,
                     head_name="pt_head",
                     keep_isolated_atoms=args.keep_isolated_atoms,
                 )

@@ -127,7 +127,7 @@ def valid_err_log(
         error_mu = eval_metrics["rmse_mu_per_atom"] * 1e3
         error_alpha = eval_metrics["rmse_alpha_per_atom"] * 1e3
         logging.info(
-            f"Epoch {epoch}: loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye, RMSE_ALPHA_per_atom={error_alpha:.2f}"
+            f"{inintial_phrase}: head: {valid_loader_name}, loss={valid_loss:8.8f}, RMSE_MU_per_atom={error_mu:8.2f} mDebye, RMSE_ALPHA_per_atom={error_alpha:8.2f}"
         )
     elif log_errors == "DipolePolarizabilityDerivRMSE":
         error_mu = eval_metrics["rmse_mu_per_atom"]
@@ -135,7 +135,7 @@ def valid_err_log(
         error_mu_deriv = eval_metrics["rmse_mu_deriv"]
         error_alpha_deriv = eval_metrics["rmse_alpha_deriv"]
         logging.info(
-            f"{inintial_phrase}: head: {valid_loader_name}, loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye"
+            f"{inintial_phrase}: head: {valid_loader_name}, loss={valid_loss:.4f}, RMSE_MU_per_atom={error_mu:.2f} mDebye, RMSE_ALPHA_per_atom={error_alpha:8.2f}, RMSE_ALPHA"
         )
     elif log_errors == "EnergyDipoleRMSE":
         error_e = eval_metrics["rmse_e_per_atom"] * 1e3
