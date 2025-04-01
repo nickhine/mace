@@ -32,7 +32,10 @@ class HeadConfig:
     stress_key: Optional[str] = None
     virials_key: Optional[str] = None
     dipole_key: Optional[str] = None
+    dipole_deriv_key: Optional[str] = None
     charges_key: Optional[str] = None
+    polarizability_key: Optional[str] = None
+    polarizability_deriv_key: Optional[str] = None
     keep_isolated_atoms: Optional[bool] = None
     atomic_numbers: Optional[Union[List[int], List[str]]] = None
     mean: Optional[float] = None
@@ -72,7 +75,12 @@ def dict_head_to_dataclass(
         stress_key=head.get("stress_key", args.stress_key),
         virials_key=head.get("virials_key", args.virials_key),
         dipole_key=head.get("dipole_key", args.dipole_key),
+        dipole_deriv_key=head.get("dipole_deriv_key", args.dipole_deriv_key),
         charges_key=head.get("charges_key", args.charges_key),
+        polarizability_key=head.get("polarizability_key", args.polarizability_key),
+        polarizability_deriv_key=head.get(
+            "polarizability_deriv_key", args.polarizability_deriv_key
+        ),
         keep_isolated_atoms=head.get("keep_isolated_atoms", args.keep_isolated_atoms),
     )
 
@@ -94,7 +102,10 @@ def prepare_default_head(args: argparse.Namespace) -> Dict[str, Any]:
             "stress_key": args.stress_key,
             "virials_key": args.virials_key,
             "dipole_key": args.dipole_key,
+            "dipole_deriv_key": args.dipole_deriv_key,
             "charges_key": args.charges_key,
+            "polarizability_key": args.polarizability_key,
+            "polarizability_deriv_key": args.polarizability_deriv_key,
             "keep_isolated_atoms": args.keep_isolated_atoms,
         }
     }
