@@ -82,6 +82,20 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log_level", help="log level", type=str, default="INFO")
 
     parser.add_argument(
+        "--plot",
+        help="Plot results of training",
+        type=str2bool,
+        default=True,
+    )
+
+    parser.add_argument(
+        "--plot_frequency",
+        help="Set plotting frequency: '0' for only at the end or an integer N to plot every N epochs.",
+        type=int,
+        default="0",
+    )
+
+    parser.add_argument(
         "--error_table",
         help="Type of error table produced at the end of the training",
         type=str,
@@ -377,7 +391,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         "--num_samples_pt",
         help="Number of samples in the pretrained head",
         type=int,
-        default=1000,
+        default=10000,
     )
     parser.add_argument(
         "--force_mh_ft_lr",
@@ -402,6 +416,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         help="Validation set file for the pretrained head",
         type=str,
         default=None,
+    )
+    parser.add_argument(
+        "--foundation_model_elements",
+        help="Keep all elements of the foundation model during fine-tuning",
+        type=str2bool,
+        default=False,
     )
     parser.add_argument(
         "--keep_isolated_atoms",
@@ -446,6 +466,50 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         help="Key of atomic charges in training xyz",
         type=str,
         default="REF_charges",
+    )
+
+    # Pretraining-specific keys
+    parser.add_argument(
+        "--pt_energy_key",
+        help="Key of reference energies in pretraining data (defaults to energy_key if not specified)",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--pt_forces_key",
+        help="Key of reference forces in pretraining data (defaults to forces_key if not specified)",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--pt_virials_key",
+        help="Key of reference virials in pretraining data (defaults to virials_key if not specified)",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--pt_stress_key",
+        help="Key of reference stress in pretraining data (defaults to stress_key if not specified)",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--pt_dipole_key",
+        help="Key of reference dipoles in pretraining data (defaults to dipole_key if not specified)",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--pt_charges_key",
+        help="Key of atomic charges in pretraining data (defaults to charges_key if not specified)",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--skip_evaluate_heads",
+        help="Comma-separated list of heads to skip during final evaluation",
+        type=str,
+        default="pt_head",
     )
 
     # Loss and optimization
@@ -499,7 +563,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         dest="swa_virials_weight",
     )
     parser.add_argument(
-        "--stress_weight", help="weight of virials loss", type=float, default=1.0
+        "--stress_weight", help="weight of stress loss", type=float, default=1.0
     )
     parser.add_argument(
         "--swa_stress_weight",
@@ -601,6 +665,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         dest="start_swa",
     )
     parser.add_argument(
+        "--lbfgs",
+        help="Switch to L-BFGS optimizer",
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "--ema",
         help="use Exponential Moving Average",
         action="store_true",
@@ -665,6 +735,12 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         help="Gradient Clipping Value",
         type=check_float_or_none,
         default=10.0,
+    )
+    parser.add_argument(
+        "--dry_run",
+        help="Run all steps upto training to test settings.",
+        action="store_true",
+        default=False,
     )
     # option for cuequivariance acceleration
     parser.add_argument(
