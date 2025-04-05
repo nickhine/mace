@@ -157,8 +157,8 @@ def plot(
         "rmse_virials_per_atom": " RMSE virials/atom [meV]",
         "mae_virials": "MAE Virials [meV]",
         "rmse_mu_per_atom": "RMSE MU/atom [mDebye]",
-        "rmse_alpha_per_atom": "RMSE Alpha/atom",
         "rmse_mu_deriv": "RMSE MU deriv [mDebye / A]",
+        "rmse_alpha_per_atom": "RMSE Alpha",
         "rmse_alpha_deriv": "RMSE Alpha deriv",
     }
 
