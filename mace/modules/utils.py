@@ -73,18 +73,20 @@ def compute_dielectric_gradients(
     dielectric: torch.Tensor,
     positions: torch.Tensor,
     training: bool = True,
+    retain: bool = False,
 ) -> Tuple[torch.tensor, torch.tensor]:
     d_dielectric_dr = []
     for i in range(dielectric.shape[-1]):
         grad_outputs: List[Optional[torch.Tensor]] = [
             torch.ones((dielectric.shape[0], 1)).to(dielectric.device)
         ]
+        # Make sure the graph is not destroyed during training or before last iteration
+        retain_graph = (retain or (i < dielectric.shape[-1] - 1))
         gradient = torch.autograd.grad(
             outputs=[dielectric[:, i].unsqueeze(-1)],  # [n_graphs, 3], [n_graphs, 9]
             inputs=[positions],  # [n_nodes, 3]
             grad_outputs=grad_outputs,
-            # Make sure the graph is not destroyed during training or before last iteration
-            retain_graph=(training or (i < dielectric.shape[-1] - 1)),
+            retain_graph=retain_graph,
             create_graph=training,  # Create graph for second derivative
             allow_unused=True,  # For complete dissociation turn to true
         )
