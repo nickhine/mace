@@ -913,10 +913,12 @@ class AtomicDipolesMACE(torch.nn.Module):
             dipole_deriv = compute_dielectric_gradients(
                 dielectric=total_dipole,
                 positions=data["positions"],
+                training=True,
             )
             polarizability_deriv = compute_dielectric_gradients(
                 dielectric=total_polarizability.flatten(-2),
                 positions=data["positions"],
+                training=training,
             )
             output["dipole_deriv"] = dipole_deriv
             output["polarizability_deriv"] = polarizability_deriv

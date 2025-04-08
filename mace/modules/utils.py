@@ -69,10 +69,10 @@ def compute_forces_virials(
 
     return -1 * forces, -1 * virials, stress
 
-
 def compute_dielectric_gradients(
     dielectric: torch.Tensor,
     positions: torch.Tensor,
+    training: bool = True,
 ) -> Tuple[torch.tensor, torch.tensor]:
     d_dielectric_dr = []
     for i in range(dielectric.shape[-1]):
@@ -83,8 +83,9 @@ def compute_dielectric_gradients(
             outputs=[dielectric[:, i].unsqueeze(-1)],  # [n_graphs, 3], [n_graphs, 9]
             inputs=[positions],  # [n_nodes, 3]
             grad_outputs=grad_outputs,
-            retain_graph=True,  # Make sure the graph is not destroyed during training
-            create_graph=True,  # Create graph for second derivative
+            # Make sure the graph is not destroyed during training or before last iteration
+            retain_graph=(training or (i < dielectric.shape[-1] - 1)),
+            create_graph=training,  # Create graph for second derivative
             allow_unused=True,  # For complete dissociation turn to true
         )
         d_dielectric_dr.append(gradient[0])
