@@ -103,6 +103,7 @@ __all__ = [
     "WeightedEnergyForcesVirialsLoss",
     "WeightedEnergyForcesStressLoss",
     "DipoleSingleLoss",
+    "DipolePolarizabilityDerivLoss",
     "WeightedEnergyForcesDipoleLoss",
     "WeightedHuberEnergyForcesStressLoss",
     "UniversalLoss",

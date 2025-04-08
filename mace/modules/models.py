@@ -874,6 +874,8 @@ class AtomicDipolesMACE(torch.nn.Module):
             dim=0,
             dim_size=num_graphs,
         )  # [n_graphs,3]
+        del contributions_dipoles, atomic_dipoles
+
         # baseline = compute_fixed_charge_dipole(
         #     charges=data["charges"],
         #     positions=data["positions"],
@@ -899,14 +901,11 @@ class AtomicDipolesMACE(torch.nn.Module):
         total_polarizability = spherical_to_cartesian(
             total_polarizability_spherical
         )
-        # TODO
-        # return atomic polarizability, atomic dipole
+        del contributions_polarizabilities, atomic_polarizabilities, total_polarizability_spherical
 
         output = {
             "dipole": total_dipole,
-            #"atomic_dipoles": atomic_dipoles,
             "polarizability": total_polarizability,
-            #"polarizability_sh": total_polarizability_spherical,
         }
 
         if compute_dielectric_derivatives:
