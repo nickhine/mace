@@ -899,8 +899,6 @@ class AtomicDipolesMACE(torch.nn.Module):
         total_polarizability = spherical_to_cartesian(
             total_polarizability_spherical
         )
-        total_polarizability_spherical.detach()
-        atomic_dipoles.detach()
         # TODO
         # return atomic polarizability, atomic dipole
 
