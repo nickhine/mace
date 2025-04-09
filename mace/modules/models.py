@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from e3nn import o3
 from e3nn.util.jit import compile_mode
+from e3nn.io import CartesianTensor
 
 from mace.data import AtomicData
 from mace.modules.radial import ZBLBasis
@@ -805,6 +806,10 @@ class AtomicDipolesMACE(torch.nn.Module):
                         hidden_irreps, dipole_only=False, dipole_polar=True
                     )
                 )
+        
+        # For conversion from spherical to cartesian and vice versa
+        self.cartesian_tensor = CartesianTensor("ij=ji")
+        self.rtp = self.cartesian_tensor.reduced_tensor_products()
 
     def forward(
         self,
@@ -874,7 +879,6 @@ class AtomicDipolesMACE(torch.nn.Module):
             dim=0,
             dim_size=num_graphs,
         )  # [n_graphs,3]
-        del contributions_dipoles, atomic_dipoles
 
         # baseline = compute_fixed_charge_dipole(
         #     charges=data["charges"],
@@ -898,10 +902,10 @@ class AtomicDipolesMACE(torch.nn.Module):
             dim_size=num_graphs,
         )  # [n_graphs,6]
 
-        total_polarizability = spherical_to_cartesian(
-            total_polarizability_spherical
-        )
-        del contributions_polarizabilities, atomic_polarizabilities, total_polarizability_spherical
+        total_polarizability = self.cartesian_tensor.to_cartesian(
+            total_polarizability_spherical, 
+            rtp=self.rtp.to(total_polarizability_spherical.device),
+        )  # [n_graphs,3,3]
 
         output = {
             "dipole": total_dipole,
