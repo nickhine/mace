@@ -979,7 +979,8 @@ def run(args) -> None:
             else:
                 model_path = Path(args.checkpoints_dir) / (tag + ".model")
             logging.info(f"Saving model to {model_path}")
-            if hasattr(model, "cartesian"):
+            # In e3nn 0.4.4 CartesianTensor cannot be deepcopied so set it to None
+            if hasattr(model, "cartesian"): 
                 model.cartesian = None
             model_to_save = deepcopy(model)
             if args.enable_cueq:

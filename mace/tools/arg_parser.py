@@ -600,12 +600,6 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         default=1.0
     )
     parser.add_argument(
-        "--dipole_deriv_weight",
-        help="weight of dipoles derivative loss",
-        type=float,
-        default=1.0
-    )
-    parser.add_argument(
         "--swa_dipole_weight",
         "--stage_two_dipole_weight",
         help="weight of dipoles after starting Stage Two (previously called swa)",
@@ -614,14 +608,41 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         dest="swa_dipole_weight",
     )
     parser.add_argument(
+        "--dipole_deriv_weight",
+        help="weight of dipoles derivative loss",
+        type=float,
+        default=1.0
+    )
+    parser.add_argument(
+        "--swa_dipole_deriv_weight",
+        "--stage_two_dipole_deriv_weight",
+        help="weight of dipoles derivative after starting Stage Two (previously called swa)",
+        type=float,
+        default=1.0
+    )
+    parser.add_argument(
         "--polarizability_weight",
         help="weight of polarizability loss",
         type=float,
         default=1.0,
     )
     parser.add_argument(
+        "--swa_polarizability_weight",
+        "--stage_two_polarizability_weight",
+        help="weight of polarizability after starting Stage Two (previously called swa)",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
         "--polarizability_deriv_weight",
         help="weight of polarizability derivative loss",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--swa_polarizability_deriv_weight",
+        "--stage_two_polarizability_deriv_weight",
+        help="weight of polarizability derivative after starting Stage Two (previously called swa)",
         type=float,
         default=1.0,
     )

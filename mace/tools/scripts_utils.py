@@ -700,7 +700,7 @@ def get_swa(
     swas: List[bool],
     dipole_only: bool = False,
 ):
-    assert dipole_only is False, "Stage Two for dipole fitting not implemented"
+    #assert dipole_only is False, "Stage Two for dipole fitting not implemented"
     swas.append(True)
     if args.start_swa is None:
         args.start_swa = max(1, args.max_num_epochs // 4 * 3)
@@ -729,6 +729,24 @@ def get_swa(
         )
         logging.info(
             f"Stage Two (after {args.start_swa} epochs) with loss function: {loss_fn_energy}, energy weight : {args.swa_energy_weight}, forces weight : {args.swa_forces_weight}, stress weight : {args.stress_weight} and learning rate : {args.swa_lr}"
+        )
+    elif args.loss == "dipole":
+        loss_fn_energy = modules.DipoleSingleLoss(
+            dipole_weight=args.swa_dipole_weight,
+            polarizability_weight=args.polarizability_weight,
+        )
+        logging.info(
+            f"Stage Two (after {args.start_swa} epochs) with loss function: {loss_fn_energy}, with dipole weight : {args.swa_dipole_weight}, polarizability weight : {args.swa_polarizability_weight} and learning rate : {args.swa_lr}"
+        )
+    elif args.loss == "dipole_polarizability_deriv":
+        loss_fn_energy = modules.DipolePolarizabilityDerivLoss(
+            dipole_weight=args.swa_dipole_weight,
+            polarizability_weight=args.swa_polarizability_weight,
+            dipole_deriv_weight=args.swa_dipole_deriv_weight,
+            polarizability_deriv_weight=args.swa_polarizability_deriv_weight
+        )
+        logging.info(
+            f"Stage Two (after {args.start_swa} epochs) with loss function: {loss_fn_energy}, with dipole weight : {args.swa_dipole_weight}, dipole_deriv weight : {args.swa_dipole_deriv_weight}, polarizability weight : {args.swa_polarizability_weight}, polarizability_deriv weight : {args.swa_polarizability_deriv_weight} and learning rate : {args.swa_lr}"
         )
     elif args.loss == "energy_forces_dipole":
         loss_fn_energy = modules.WeightedEnergyForcesDipoleLoss(
