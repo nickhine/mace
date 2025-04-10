@@ -810,6 +810,7 @@ class AtomicDipolesMACE(torch.nn.Module):
         # For conversion from spherical to cartesian and vice versa
         _cartesian_tensor = CartesianTensor("ij=ji")
         self.rtp = _cartesian_tensor.reduced_tensor_products()
+        self.rtp_device = None
 
     def forward(
         self,
@@ -903,9 +904,11 @@ class AtomicDipolesMACE(torch.nn.Module):
         )  # [n_graphs,6]
 
         cartesian = CartesianTensor("ij=ji")
+        if self.rtp_device is None:
+            self.rtp_device = self.rtp.to(total_polarizability_spherical.device)
         total_polarizability = cartesian.to_cartesian(
             total_polarizability_spherical, 
-            rtp=self.rtp.to(total_polarizability_spherical.device),
+            rtp=self.rtp_device,
         )  # [n_graphs,3,3]
 
         output = {
