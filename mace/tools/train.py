@@ -256,7 +256,6 @@ def train(
             )
             if "ScheduleFree" in type(optimizer).__name__:
                 optimizer.eval()
-            print(f"Allocated 1: {torch.cuda.memory_allocated() / 1024**2:.3f} MB")
             with param_context:
                 wandb_log_dict = {}
                 for valid_loader_name, valid_loader in valid_loaders.items():
@@ -293,7 +292,6 @@ def train(
                 valid_loss = (
                     valid_loss_head  # consider only the last head for the checkpoint
                 )
-            print(f"Allocated 2: {torch.cuda.memory_allocated() / 1024**2:.3f} MB")
             if log_wandb:
                 wandb.log(wandb_log_dict)
             if rank == 0:
