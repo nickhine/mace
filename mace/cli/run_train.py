@@ -979,6 +979,8 @@ def run(args) -> None:
             else:
                 model_path = Path(args.checkpoints_dir) / (tag + ".model")
             logging.info(f"Saving model to {model_path}")
+            if hasattr(model, "cartesian"):
+                model.cartesian = None
             model_to_save = deepcopy(model)
             if args.enable_cueq:
                 print("RUNING CUEQ TO E3NN")
