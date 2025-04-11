@@ -765,7 +765,7 @@ def run(args) -> None:
     swa: Optional[tools.SWAContainer] = None
     swas = [False]
     if args.swa:
-        swa, swas = get_swa(args, model, optimizer, swas, dipole_only)
+        swa, swas = get_swa(args, model, optimizer, swas)
 
     checkpoint_handler = tools.CheckpointHandler(
         directory=args.checkpoints_dir,

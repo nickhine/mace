@@ -891,11 +891,13 @@ class AtomicDipolesMACE(torch.nn.Module):
             if self.use_charge:
                 charges.append(node_out[:, 0])
             if self.use_dipole:
+                # offset by 1 if charge or polarizability is used, 2 if charge and polarizability
                 a = 1 if self.use_charge ^ self.use_polarizability else 0
                 a = 2 if self.use_charge and self.use_polarizability else a
                 node_dipoles = node_out[:, a:a+3]
                 dipoles.append(node_dipoles)
             if self.use_polarizability:
+                # scalar offset by 1 if charge is used, tensor further offset by 3 if dipole is used
                 a = 0 if not self.use_charge else 1
                 b = a + 1 if not self.use_dipole else a + 4
                 node_polarizability = torch.cat(
