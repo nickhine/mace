@@ -261,6 +261,9 @@ def _build_model(
                 "RealAgnosticInteractionBlock"
             ],
             MLP_irreps=o3.Irreps(args.MLP_irreps),
+            use_charge=False,
+            use_dipole=args.compute_dipole,
+            use_polarizability=args.compute_polarizability,
         )
     if args.model == "EnergyDipolesMACE":
         assert (

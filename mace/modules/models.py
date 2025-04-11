@@ -14,8 +14,7 @@ from e3nn.io import CartesianTensor
 
 from mace.data import AtomicData
 from mace.modules.radial import ZBLBasis
-from mace.tools.scatter import scatter_sum
-from mace.tools.torch_tools import spherical_to_cartesian
+from mace.tools.scatter import scatter_sum, scatter_mean
 
 from .blocks import (
     AtomicEnergiesBlock,
@@ -691,6 +690,9 @@ class AtomicDipolesMACE(torch.nn.Module):
         ],  # Just here to make it compatible with energy models, MUST be None
         radial_type: Optional[str] = "bessel",
         radial_MLP: Optional[List[int]] = None,
+        use_charge: bool = False,
+        use_dipole: bool = False,
+        use_polarizability: bool = False,
         cueq_config: Optional[Dict[str, Any]] = None,  # pylint: disable=unused-argument
     ):
         super().__init__()
@@ -701,13 +703,18 @@ class AtomicDipolesMACE(torch.nn.Module):
         self.register_buffer(
             "num_interactions", torch.tensor(num_interactions, dtype=torch.int64)
         )
+        self.use_charge = use_charge
+        self.use_dipole = use_dipole
+        self.use_polarizability = use_polarizability
         assert atomic_energies is None
 
         # Embedding
         node_attr_irreps = o3.Irreps([(num_elements, (0, 1))])
         node_feats_irreps = o3.Irreps([(hidden_irreps.count(o3.Irrep(0, 1)), (0, 1))])
         self.node_embedding = LinearNodeEmbeddingBlock(
-            irreps_in=node_attr_irreps, irreps_out=node_feats_irreps
+            irreps_in=node_attr_irreps,
+            irreps_out=node_feats_irreps,
+            cueq_config=cueq_config,
         )
         self.radial_embedding = RadialEmbeddingBlock(
             r_max=r_max,
@@ -736,6 +743,7 @@ class AtomicDipolesMACE(torch.nn.Module):
             hidden_irreps=hidden_irreps,
             avg_num_neighbors=avg_num_neighbors,
             radial_MLP=radial_MLP,
+            cueq_config=cueq_config,
         )
         self.interactions = torch.nn.ModuleList([inter])
 
@@ -751,21 +759,27 @@ class AtomicDipolesMACE(torch.nn.Module):
             correlation=correlation,
             num_elements=num_elements,
             use_sc=use_sc_first,
+            cueq_config=cueq_config,
         )
         self.products = torch.nn.ModuleList([prod])
 
         self.readouts = torch.nn.ModuleList()
         self.readouts.append(
             LinearDipoleReadoutBlock(
-                hidden_irreps, dipole_only=False, dipole_polar=True
+                hidden_irreps,
+                use_charge=use_charge,
+                use_dipole=use_dipole,
+                use_polarizability=use_polarizability,
+                cueq_config=cueq_config,
             )
         )
 
         for i in range(num_interactions - 1):
             if i == num_interactions - 2:
-                assert (
-                    len(hidden_irreps) > 1
-                ), "To predict dipoles use at least l=1 hidden_irreps"
+                if use_dipole or use_polarizability:
+                    assert (
+                        len(hidden_irreps) > 1
+                    ), "To predict dipoles use at least l=1 hidden_irreps"
                 hidden_irreps_out = str(
                     hidden_irreps[1]
                 )  # Select only l=1 vectors for last layer
@@ -780,6 +794,7 @@ class AtomicDipolesMACE(torch.nn.Module):
                 hidden_irreps=hidden_irreps_out,
                 avg_num_neighbors=avg_num_neighbors,
                 radial_MLP=radial_MLP,
+                cueq_config=cueq_config,
             )
             self.interactions.append(inter)
             prod = EquivariantProductBasisBlock(
@@ -788,6 +803,7 @@ class AtomicDipolesMACE(torch.nn.Module):
                 correlation=correlation,
                 num_elements=num_elements,
                 use_sc=True,
+                cueq_config=cueq_config,
             )
             self.products.append(prod)
             if i == num_interactions - 2:
@@ -796,22 +812,30 @@ class AtomicDipolesMACE(torch.nn.Module):
                         hidden_irreps_out,
                         MLP_irreps,
                         gate,
-                        dipole_only=False,
-                        dipole_polar=True,
+                        use_charge=use_charge,
+                        use_dipole=use_dipole,
+                        use_polarizability=use_polarizability,
+                        cueq_config=cueq_config,
                     )
                 )
             else:
                 self.readouts.append(
                     LinearDipoleReadoutBlock(
-                        hidden_irreps, dipole_only=False, dipole_polar=True
+                        hidden_irreps,
+                        use_charge=use_charge,
+                        use_dipole=use_dipole,
+                        use_polarizability=use_polarizability,
+                        cueq_config=cueq_config,
                     )
                 )
         
-        # For conversion from spherical to cartesian and vice versa
-        cartesian_tensor = CartesianTensor("ij=ji")
-        self.rtp = cartesian_tensor.reduced_tensor_products()
-        self.rtp_device = None
-        self.cartesian = None
+        if use_polarizability:
+            # For conversion from spherical to cartesian and vice versa
+            cartesian_tensor = CartesianTensor("ij=ji")
+            self.rtp = cartesian_tensor.reduced_tensor_products()
+            # Cached versions, needed to avoid growth of computational graph
+            self.rtp_device = None
+            self.cartesian = None
 
     def forward(
         self,
@@ -823,7 +847,7 @@ class AtomicDipolesMACE(torch.nn.Module):
         compute_displacement: bool = False,
         compute_dielectric_derivatives: bool = True,
     ) -> Dict[str, Optional[torch.Tensor]]:
-        # assert compute_force is False
+        assert compute_force is False
         assert compute_virials is False
         assert compute_stress is False
         assert compute_displacement is False
@@ -845,6 +869,7 @@ class AtomicDipolesMACE(torch.nn.Module):
         )
 
         # Interactions
+        charges = []
         dipoles = []
         polarizabilities = []
         for interaction, product, readout in zip(
@@ -863,76 +888,99 @@ class AtomicDipolesMACE(torch.nn.Module):
                 node_attrs=data["node_attrs"],
             )
             node_out = readout(node_feats).squeeze(-1)  # [n_nodes,]
-            node_dipoles = node_out[:, 1:4]
-            node_polarizability = torch.cat(
-                (node_out[:, 0].unsqueeze(-1), node_out[:, 4:]), dim=-1
-            )
-            dipoles.append(node_dipoles)
-            polarizabilities.append(node_polarizability)
+            if self.use_charge:
+                charges.append(node_out[:, 0])
+            if self.use_dipole:
+                node_dipoles = node_out[:, 1:4]
+                dipoles.append(node_dipoles)
+            if self.use_polarizability:
+                if self.use_charge:
+                    node_polarizability = torch.cat(
+                        (node_out[:, 1].unsqueeze(-1), node_out[:, 5:]), dim=-1
+                    )
+                else:
+                    node_polarizability = torch.cat(
+                        (node_out[:, 0].unsqueeze(-1), node_out[:, 4:]), dim=-1
+                    )
+                polarizabilities.append(node_polarizability)
 
-        # Compute the dipoles
-        contributions_dipoles = torch.stack(
-            dipoles, dim=-1
-        )  # [n_nodes,3,n_contributions]
-        atomic_dipoles = torch.sum(contributions_dipoles, dim=-1)  # [n_nodes,3]
-        total_dipole = scatter_sum(
-            src=atomic_dipoles,
-            index=data["batch"],
-            dim=0,
-            dim_size=num_graphs,
-        )  # [n_graphs,3]
+        output = {}
 
-        # baseline = compute_fixed_charge_dipole(
-        #     charges=data["charges"],
-        #     positions=data["positions"],
-        #     batch=data["batch"],
-        #     num_graphs=num_graphs,
-        # )  # [n_graphs,3]
-        total_dipole = total_dipole  # + baseline
+        if self.use_charge:
+            num_atoms = data["ptr"][1:] - data["ptr"][:-1]
+            atomic_charges = torch.stack(charges, dim=-1).sum(-1)  # [n_nodes,]
+            # The idea is to normalize the charges so that they sum to the net charge in the system before predicting the dipole.
+            total_charge_excess = scatter_mean(
+                src=atomic_charges, index=data["batch"], dim_size=num_graphs
+            ) - (data["total_charge"] / num_atoms)
+            atomic_charges = atomic_charges - total_charge_excess[data["batch"]]
+            output["charges"] = atomic_charges
 
-        # Compute the polarizabilities
-        contributions_polarizabilities = torch.stack(
-            polarizabilities, dim=-1
-        )  # [n_nodes,6,n_contributions]
-        atomic_polarizabilities = torch.sum(
-            contributions_polarizabilities, dim=-1
-        )  # [n_nodes,6]
-        total_polarizability_spherical = scatter_sum(
-            src=atomic_polarizabilities,
-            index=data["batch"],
-            dim=0,
-            dim_size=num_graphs,
-        )  # [n_graphs,6]
+        if self.use_dipole:
+            # Compute the dipoles
+            contributions_dipoles = torch.stack(
+                dipoles, dim=-1
+            )  # [n_nodes,3,n_contributions]
+            atomic_dipoles = torch.sum(contributions_dipoles, dim=-1)  # [n_nodes,3]
+            total_dipole = scatter_sum(
+                src=atomic_dipoles,
+                index=data["batch"],
+                dim=0,
+                dim_size=num_graphs,
+            )  # [n_graphs,3]
+            if self.use_charge:
+                baseline = compute_fixed_charge_dipole(
+                    charges=atomic_charges,
+                    positions=data["positions"],
+                    batch=data["batch"],
+                    num_graphs=num_graphs,
+                )  # [n_graphs,3]
+                total_dipole = total_dipole + baseline
+            output["dipole"] = total_dipole
 
-        if self.cartesian is None:
-            self.cartesian = CartesianTensor("ij=ji")
-        if self.rtp_device is None:
-            self.rtp_device = self.rtp.to(total_polarizability_spherical.device)
-        total_polarizability = self.cartesian.to_cartesian(
-            total_polarizability_spherical, 
-            rtp=self.rtp_device,
-        )  # [n_graphs,3,3]
+        if self.use_polarizability:
+            # Compute the polarizabilities
+            contributions_polarizabilities = torch.stack(
+                polarizabilities, dim=-1
+            )  # [n_nodes,6,n_contributions]
+            atomic_polarizabilities = torch.sum(
+                contributions_polarizabilities, dim=-1
+            )  # [n_nodes,6]
+            total_polarizability_spherical = scatter_sum(
+                src=atomic_polarizabilities,
+                index=data["batch"],
+                dim=0,
+                dim_size=num_graphs,
+            )  # [n_graphs,6]
 
-        output = {
-            "dipole": total_dipole,
-            "polarizability": total_polarizability,
-        }
+            if self.cartesian is None:
+                self.cartesian = CartesianTensor("ij=ji")
+            if self.rtp_device is None:
+                self.rtp_device = self.rtp.to(total_polarizability_spherical.device)
+            total_polarizability = self.cartesian.to_cartesian(
+                total_polarizability_spherical, 
+                rtp=self.rtp_device,
+            )  # [n_graphs,3,3]
+
+            output["polarizability"] = total_polarizability
 
         if compute_dielectric_derivatives:
-            dipole_deriv = compute_dielectric_gradients(
-                dielectric=total_dipole,
-                positions=data["positions"],
-                training=training,
-                retain=True, # until after polarizability_deriv
-            )
-            polarizability_deriv = compute_dielectric_gradients(
-                dielectric=total_polarizability.flatten(-2),
-                positions=data["positions"],
-                training=training,
-                retain=training,
-            )
-            output["dipole_deriv"] = dipole_deriv
-            output["polarizability_deriv"] = polarizability_deriv
+            if self.use_dipole:
+                dipole_deriv = compute_dielectric_gradients(
+                    dielectric=total_dipole,
+                    positions=data["positions"],
+                    training=training,
+                    retain=True, # until after polarizability_deriv
+                )
+                output["dipole_deriv"] = dipole_deriv
+            if self.use_polarizability:
+                polarizability_deriv = compute_dielectric_gradients(
+                    dielectric=total_polarizability.flatten(-2),
+                    positions=data["positions"],
+                    training=training,
+                    retain=training,
+                )
+                output["polarizability_deriv"] = polarizability_deriv
 
         return output
 
@@ -1019,7 +1067,7 @@ class EnergyDipolesMACE(torch.nn.Module):
         self.products = torch.nn.ModuleList([prod])
 
         self.readouts = torch.nn.ModuleList()
-        self.readouts.append(LinearDipoleReadoutBlock(hidden_irreps, dipole_only=False))
+        self.readouts.append(LinearDipoleReadoutBlock(hidden_irreps,use_charge=True,use_dipole=True,))
 
         for i in range(num_interactions - 1):
             if i == num_interactions - 2:
@@ -1053,12 +1101,12 @@ class EnergyDipolesMACE(torch.nn.Module):
             if i == num_interactions - 2:
                 self.readouts.append(
                     NonLinearDipoleReadoutBlock(
-                        hidden_irreps_out, MLP_irreps, gate, dipole_only=False
+                        hidden_irreps_out, MLP_irreps, gate,use_charge=True,use_dipole=True
                     )
                 )
             else:
                 self.readouts.append(
-                    LinearDipoleReadoutBlock(hidden_irreps, dipole_only=False)
+                    LinearDipoleReadoutBlock(hidden_irreps,use_charge=True,use_dipole=True)
                 )
 
     def forward(

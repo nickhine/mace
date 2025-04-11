@@ -117,17 +117,23 @@ class LinearDipoleReadoutBlock(torch.nn.Module):
     def __init__(
         self,
         irreps_in: o3.Irreps,
-        dipole_only: bool = False,
-        dipole_polar: bool = False,
+        use_charge: bool = False,
+        use_dipole: bool = False,
+        use_polarizability: bool = False,
         cueq_config: Optional[CuEquivarianceConfig] = None,
     ):
         super().__init__()
-        if dipole_only:
-            self.irreps_out = o3.Irreps("1x1o")
-        elif dipole_polar:
-            self.irreps_out = o3.Irreps("1x0e + 1x1o + 1x2e")
-        else:
-            self.irreps_out = o3.Irreps("1x0e + 1x1o")
+        irrep_parts = []
+        if use_charge ^ use_polarizability:
+            irrep_parts.append("1x0e")
+        if use_charge and use_polarizability:
+            irrep_parts.append("2x0e")
+        if use_dipole:
+            irrep_parts.append("1x1o")
+        if use_polarizability:
+            irrep_parts.append("1x2e")
+        irrep_str = " + ".join(irrep_parts)
+        self.irreps_out = o3.Irreps(irrep_str)
         self.linear = Linear(
             irreps_in=irreps_in, irreps_out=self.irreps_out, cueq_config=cueq_config
         )
@@ -143,18 +149,26 @@ class NonLinearDipoleReadoutBlock(torch.nn.Module):
         irreps_in: o3.Irreps,
         MLP_irreps: o3.Irreps,
         gate: Callable,
-        dipole_only: bool = False,
-        dipole_polar: bool = False,
+        use_charge: bool = False,
+        use_dipole: bool = False,
+        use_polarizability: bool = False,
         cueq_config: Optional[CuEquivarianceConfig] = None,
     ):
         super().__init__()
         self.hidden_irreps = MLP_irreps
-        if dipole_only:
-            self.irreps_out = o3.Irreps("1x1o")
-        elif dipole_polar:
-            self.irreps_out = o3.Irreps("1x0e + 1x1o + 1x2e")
-        else:
-            self.irreps_out = o3.Irreps("1x0e + 1x1o")
+
+        irrep_parts = []
+        if use_charge ^ use_polarizability:
+            irrep_parts.append("1x0e")
+        if use_charge and use_polarizability:
+            irrep_parts.append("2x0e")
+        if use_dipole:
+            irrep_parts.append("1x1o")
+        if use_polarizability:
+            irrep_parts.append("1x2e")
+        irrep_str = " + ".join(irrep_parts)
+        self.irreps_out = o3.Irreps(irrep_str)
+
         irreps_scalars = o3.Irreps(
             [(mul, ir) for mul, ir in MLP_irreps if ir.l == 0 and ir in self.irreps_out]
         )

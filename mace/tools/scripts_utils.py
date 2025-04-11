@@ -698,9 +698,7 @@ def get_swa(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     swas: List[bool],
-    dipole_only: bool = False,
 ):
-    #assert dipole_only is False, "Stage Two for dipole fitting not implemented"
     swas.append(True)
     if args.start_swa is None:
         args.start_swa = max(1, args.max_num_epochs // 4 * 3)

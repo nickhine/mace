@@ -484,7 +484,7 @@ def build_default_arg_parser() -> argparse.ArgumentParser:
         "--polarizability_deriv_key",
         help="Key of polarizability derivative in training xyz",
         type=str,
-        default="polarizability derivative",
+        default="polarizability_deriv",
     )
 
     # Pretraining-specific keys

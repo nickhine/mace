@@ -536,9 +536,10 @@ def run(args) -> None:
         atomic_energies = None
         dipole_only = True
 
-        args.compute_polarizability = True
+        args.compute_charges = False
         args.compute_dipole = True
         args.compute_dipole_deriv = True
+        args.compute_polarizability = True
         args.compute_polarizability_deriv = True
         args.compute_energy = False
         args.compute_forces = False
@@ -547,19 +548,21 @@ def run(args) -> None:
     else:
         dipole_only = False
         if args.model == "EnergyDipolesMACE":
+            args.compute_charges = False
             args.compute_dipole = True
-            args.compute_polarizability = True
             args.compute_dipole_deriv = False
+            args.compute_polarizability = False
             args.compute_polarizability_deriv = False
             args.compute_energy = True
             args.compute_forces = True
             args.compute_virials = False
             args.compute_stress = False
         else:
+            args.compute_charges = False
             args.compute_energy = True
             args.compute_dipole = False
-            args.compute_polarizability = False
             args.compute_dipole_deriv = False
+            args.compute_polarizability = False
             args.compute_polarizability_deriv = False
         # atomic_energies: np.ndarray = np.array(
         #     [atomic_energies_dict[z] for z in z_table.zs]
