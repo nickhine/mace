@@ -47,6 +47,9 @@ class AtomicData(torch_geometric.data.Data):
     stress_weight: torch.Tensor
     virials_weight: torch.Tensor
     dipole_weight: torch.Tensor
+    dipole_deriv_weight: torch.Tensor
+    polarizability_weight: torch.Tensor
+    polarizability_deriv_weight: torch.Tensor
     charges_weight: torch.Tensor
 
     def __init__(
@@ -64,6 +67,7 @@ class AtomicData(torch_geometric.data.Data):
         stress_weight: Optional[torch.Tensor],  # [,]
         virials_weight: Optional[torch.Tensor],  # [,]
         dipole_weight: Optional[torch.Tensor],  # [,]
+        charges_weight: Optional[torch.Tensor],  # [,]
         polarizability_weight: Optional[torch.Tensor],  # [,]
         dipole_deriv_weight: Optional[torch.Tensor],  # [,]
         polarizability_deriv_weight: Optional[torch.Tensor],  # [,]
@@ -232,52 +236,24 @@ class AtomicData(torch_geometric.data.Data):
             else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
 
-        dipole_weight = (
-            torch.tensor(config.dipole_weight, dtype=torch.get_default_dtype())
-            if config.dipole_weight is not None
-            else 1
-        )
-
         polarizability_weight = (
-            torch.tensor(config.polarizability_weight, dtype=torch.get_default_dtype())
-            if config.polarizability_weight is not None
-            else 1
+            torch.tensor(config.property_weights.get("polarizability"), dtype=torch.get_default_dtype()
+            )
+            if config.property_weights.get("polarizability") is not None
+            else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
 
         dipole_deriv_weight = (
-            torch.tensor(config.dipole_deriv_weight, dtype=torch.get_default_dtype())
-            if config.dipole_deriv_weight is not None
-            else 1
+            torch.tensor(config.property_weights.get("dipole_deriv"), dtype=torch.get_default_dtype()
+            )
+            if config.property_weights.get("dipole_deriv") is not None
+            else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
 
         polarizability_deriv_weight = (
-            torch.tensor(config.polarizability_deriv_weight, dtype=torch.get_default_dtype())
-            if config.polarizability_deriv_weight is not None
-            else 1
-        )
-
-        dipole_weight = (
-            torch.tensor(config.dipole_weight, dtype=torch.get_default_dtype())
-            if config.dipole_weight is not None
-            else 1
-        )
-
-        polarizability_weight = (
-            torch.tensor(config.polarizability_weight, dtype=torch.get_default_dtype())
-            if config.polarizability_weight is not None
-            else 1
-        )
-
-        dipole_deriv_weight = (
-            torch.tensor(config.dipole_deriv_weight, dtype=torch.get_default_dtype())
-            if config.dipole_deriv_weight is not None
-            else 1
-        )
-
-        polarizability_deriv_weight = (
-            torch.tensor(config.polarizability_deriv_weight, dtype=torch.get_default_dtype())
-            if config.polarizability_deriv_weight is not None
-            else 1
+            torch.tensor(config.property_weights.get("polarizability_deriv"), dtype=torch.get_default_dtype()
+            if config.property_weights.get("polarizability_deriv") is not None
+            else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
 
         forces = (
@@ -337,31 +313,15 @@ class AtomicData(torch_geometric.data.Data):
         )
 
         polarizability = (
-            torch.tensor(config.polarizability, dtype=torch.get_default_dtype())
-            if config.polarizability is not None
+            torch.tensor(config.properties.get("polarizability"), dtype=torch.get_default_dtype())
+            if config.properties.get("polarizability") is not None
             else None
         )
         if polarizability is not None and len(polarizability) == 9:
             polarizability = polarizability.reshape(3, 3)
         polarizability_deriv = (
-            torch.tensor(config.polarizability_deriv, dtype=torch.get_default_dtype())
-            if config.polarizability_deriv is not None
-            else None
-        )
-        if polarizability_deriv is not None and polarizability_deriv.shape[1] == 27:
-            polarizability_deriv = polarizability_deriv.reshape(
-                (polarizability_deriv.shape[0], 3, 3, 3))
-
-        polarizability = (
-            torch.tensor(config.polarizability, dtype=torch.get_default_dtype())
-            if config.polarizability is not None
-            else None
-        )
-        if polarizability is not None and len(polarizability) == 9:
-            polarizability = polarizability.reshape(3, 3)
-        polarizability_deriv = (
-            torch.tensor(config.polarizability_deriv, dtype=torch.get_default_dtype())
-            if config.polarizability_deriv is not None
+            torch.tensor(config.properties.get("polarizability_deriv"), dtype=torch.get_default_dtype())
+            if config.properties.get("polarizability_deriv") is not None
             else None
         )
         if polarizability_deriv is not None and polarizability_deriv.shape[1] == 27:

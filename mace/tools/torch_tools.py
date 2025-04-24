@@ -95,7 +95,7 @@ def spherical_to_cartesian(t: torch.Tensor):
     Convert spherical notation to cartesian notation
     """
     stress_cart_tensor = CartesianTensor("ij=ji")
-    stress_rtp = stress_cart_tensor.reduced_tensor_products().to(t.device)
+    stress_rtp = stress_cart_tensor.reduced_tensor_products()
     return stress_cart_tensor.to_cartesian(t, rtp=stress_rtp)
 
 
@@ -104,7 +104,7 @@ def cartesian_to_spherical(t: torch.Tensor):
     Convert cartesian notation to spherical notation
     """
     stress_cart_tensor = CartesianTensor("ij=ji")
-    stress_rtp = stress_cart_tensor.reduced_tensor_products().to(t.device)
+    stress_rtp = stress_cart_tensor.reduced_tensor_products()
     return stress_cart_tensor.to_cartesian(t, rtp=stress_rtp)
 
 
