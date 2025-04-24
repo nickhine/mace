@@ -237,21 +237,25 @@ class AtomicData(torch_geometric.data.Data):
         )
 
         polarizability_weight = (
-            torch.tensor(config.property_weights.get("polarizability"), dtype=torch.get_default_dtype()
+            torch.tensor(
+                config.property_weights.get("polarizability"), dtype=torch.get_default_dtype()
             )
             if config.property_weights.get("polarizability") is not None
             else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
 
         dipole_deriv_weight = (
-            torch.tensor(config.property_weights.get("dipole_deriv"), dtype=torch.get_default_dtype()
+            torch.tensor(
+                config.property_weights.get("dipole_deriv"), dtype=torch.get_default_dtype()
             )
             if config.property_weights.get("dipole_deriv") is not None
             else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
 
         polarizability_deriv_weight = (
-            torch.tensor(config.property_weights.get("polarizability_deriv"), dtype=torch.get_default_dtype()
+            torch.tensor(
+                config.property_weights.get("polarizability_deriv"), dtype=torch.get_default_dtype()
+            )
             if config.property_weights.get("polarizability_deriv") is not None
             else torch.tensor(1.0, dtype=torch.get_default_dtype())
         )
@@ -300,9 +304,10 @@ class AtomicData(torch_geometric.data.Data):
                  config.properties.get("dipole_deriv"), dtype=torch.get_default_dtype()
             ).unsqueeze(0)
             if config.properties.get("dipole_deriv") is not None
-            else None
+            else torch.zeros(3, num_atoms, 3, dtype=torch.get_default_dtype())
         )
         if dipole_deriv is not None: # and dipole_deriv.shape[-1] == 9:
+            print(dipole_deriv.shape)
             dipole_deriv = dipole_deriv.reshape((dipole_deriv.shape[1], 3, 3))
         charges = (
             torch.tensor(
@@ -342,6 +347,7 @@ class AtomicData(torch_geometric.data.Data):
             stress_weight=stress_weight,
             virials_weight=virials_weight,
             dipole_weight=dipole_weight,
+            charges_weight=charges_weight,
             polarizability_weight=polarizability_weight,
             dipole_deriv_weight=dipole_deriv_weight,
             polarizability_deriv_weight=polarizability_deriv_weight,
