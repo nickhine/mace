@@ -210,6 +210,7 @@ def load_from_xyz(
     atoms_list = ase.io.read(file_path, index=":")
     energy_key = key_specification.info_keys["energy"]
     forces_key = key_specification.arrays_keys["forces"]
+    dipole_key = key_specification.info_keys["dipole"]
     stress_key = key_specification.info_keys["stress"]
     head_key = key_specification.info_keys["head"]
     if energy_key == "energy":
