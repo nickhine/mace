@@ -21,11 +21,18 @@ from ase.stress import full_3x3_to_voigt_6_stress
 from e3nn import o3
 
 from mace import data
-from mace.cli.convert_e3nn_cueq import run as run_e3nn_to_cueq
 from mace.modules.utils import extract_invariant
 from mace.tools import torch_geometric, torch_tools, utils
 from mace.tools.compile import prepare
 from mace.tools.scripts_utils import extract_model
+
+try:
+    from mace.cli.convert_e3nn_cueq import run as run_e3nn_to_cueq
+
+    CUEQQ_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    CUEQQ_AVAILABLE = False
+    run_e3nn_to_cueq = None
 
 
 def get_model_dtype(model: torch.nn.Module) -> torch.dtype:
@@ -72,7 +79,15 @@ class MACECalculator(Calculator):
         Calculator.__init__(self, **kwargs)
         if enable_cueq:
             assert model_type == "MACE", "CuEq only supports MACE models"
-            compile_mode = None
+            if compile_mode is not None:
+                logging.warning(
+                    "CuEq does not support torch.compile, setting compile_mode to None"
+                )
+                compile_mode = None
+        if enable_cueq and not CUEQQ_AVAILABLE:
+            raise ImportError(
+                "cuequivariance is not installed so CuEq acceleration cannot be used"
+            )
         if "model_path" in kwargs:
             deprecation_message = (
                 "'model_path' argument is deprecated, please use 'model_paths'"
@@ -204,7 +219,9 @@ class MACECalculator(Calculator):
         if kwarg_head is not None:
             self.head = kwarg_head
         else:
-            self.head = [head for head in self.available_heads if head.lower() == "default"]
+            self.head = [
+                head for head in self.available_heads if head.lower() == "default"
+            ]
             if len(self.head) == 0:
                 raise ValueError(
                     "Head keyword was not provided, and no head in the model is 'default'. "
